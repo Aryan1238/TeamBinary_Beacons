@@ -1,168 +1,132 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Sparkles,
-  ArrowRight,
-  ShieldAlert,
-  BrainCircuit,
-  Activity,
-  Zap,
-  Globe2,
-  Database,
-  CheckCircle2,
-  Thermometer,
-  Gauge,
-  Droplets,
-  Layers,
-  ChevronRight,
-  Radio
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Navbar } from '../components/landing/Navbar';
+import { Hero } from '../components/landing/Hero';
+import { FeatureCards } from '../components/landing/FeatureCards';
+import { FlowSection } from '../components/landing/FlowSection';
+import { StatsStrip } from '../components/landing/StatsStrip';
+import { CTASection } from '../components/landing/CTASection';
+import { Footer } from '../components/landing/Footer';
+import { CloudSun, X, ArrowRight } from 'lucide-react';
 
 interface LandingPageProps {
-  onLaunchCommandCenter: () => void;
-  onLaunchSimulationLab: () => void;
+  onOpenDashboard?: () => void;
+  onLaunchCommandCenter?: () => void;
+  onLaunchSimulationLab?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
+  onOpenDashboard,
   onLaunchCommandCenter,
   onLaunchSimulationLab
 }) => {
-  const [telemetry, setTelemetry] = useState({ temp: 28.5, press: 1008.2, rh: 62.0 });
+  const [comingSoonModalOpen, setComingSoonModalOpen] = useState(false);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTelemetry(prev => ({
-        temp: Number((prev.temp + (Math.random() * 0.4 - 0.2)).toFixed(1)),
-        press: Number((prev.press + (Math.random() * 0.6 - 0.3)).toFixed(1)),
-        rh: Math.min(99, Math.max(20, Number((prev.rh + (Math.random() * 1.2 - 0.6)).toFixed(1))))
-      }));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
+  // Connect to custom dashboard if handler provided, otherwise open placeholder modal
+  const handleOpenDashboard = () => {
+    if (onOpenDashboard) {
+      onOpenDashboard();
+    } else {
+      setComingSoonModalOpen(true);
+    }
+  };
+
+  const handleExploreSystem = () => {
+    const el = document.getElementById('overview');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-y-auto font-sans">
-      {/* Top Government Banner */}
-      <div className="bg-slate-900 text-white px-6 py-2.5 flex items-center justify-between text-xs font-sans">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span className="text-cyan-300 font-bold">SMART INDIA HACKATHON 2026</span>
-          <span className="text-slate-500">|</span>
-          <span className="text-slate-300">Problem Statement ID: 26073</span>
-        </div>
-        <div className="hidden md:flex items-center gap-3 text-slate-300">
-          <span>Ministry of Earth Sciences (MoES)</span>
-          <span>•</span>
-          <span>India Meteorological Department (IMD)</span>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#091021] bg-gradient-to-b from-[#0B132B] via-[#0E172E] to-[#070D1C] text-slate-100 overflow-y-auto selection:bg-amber-400/30 selection:text-amber-200 font-sans scroll-smooth relative">
+      
+      {/* 1. Weather-Themed Navbar */}
+      <Navbar onOpenDashboard={handleOpenDashboard} />
 
-      {/* Hero Section */}
-      <section className="relative px-6 pt-16 pb-20 max-w-6xl mx-auto text-center">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-50 border border-cyan-300 text-cyan-800 text-xs font-semibold mb-6 shadow-2xs">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
-          <span>Real-Time Meteorological Telemetry Assurance Platform</span>
-        </div>
+      {/* 2 & 3. Hero Section with Atmospheric Sky Hierarchy & Weather Telemetry Mesh */}
+      <Hero
+        onOpenDashboard={handleOpenDashboard}
+        onExploreSystem={handleExploreSystem}
+      />
 
-        <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-slate-900 mb-3">
-          SKYGUARD <span className="text-cyan-600">AI</span>
-        </h1>
-        <p className="text-xl sm:text-2xl text-cyan-800 font-semibold mb-4 tracking-tight">
-          "Trust Every Weather Reading."
-        </p>
-        <p className="max-w-2xl mx-auto text-slate-600 text-sm sm:text-base leading-relaxed mb-8">
-          AI-powered real-time anomaly detection and telemetry assurance for Automatic Weather Stations (AWS).
-          Intelligently distinguishes isolated sensor malfunctions from genuine regional meteorological events.
-        </p>
+      {/* 4. Three Capability Cards (Styled in reference card design with weather accents) */}
+      <FeatureCards />
 
-        {/* Live Animated Telemetry Ticker */}
-        <div className="max-w-xl mx-auto mb-10 p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-around text-xs shadow-xs font-mono">
-          <div className="flex items-center gap-2.5">
-            <Thermometer className="w-5 h-5 text-orange-600" />
-            <div className="text-left">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Temperature</p>
-              <p className="text-sm font-bold text-slate-900">{telemetry.temp}°C</p>
-            </div>
-          </div>
-          <div className="h-8 w-px bg-slate-200" />
-          <div className="flex items-center gap-2.5">
-            <Gauge className="w-5 h-5 text-teal-600" />
-            <div className="text-left">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Pressure</p>
-              <p className="text-sm font-bold text-slate-900">{telemetry.press} hPa</p>
-            </div>
-          </div>
-          <div className="h-8 w-px bg-slate-200" />
-          <div className="flex items-center gap-2.5">
-            <Droplets className="w-5 h-5 text-blue-600" />
-            <div className="text-left">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Humidity</p>
-              <p className="text-sm font-bold text-slate-900">{telemetry.rh}%</p>
-            </div>
-          </div>
-        </div>
+      {/* 5. System Flow Section: From Sensor Data to Actionable Intelligence */}
+      <FlowSection />
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            onClick={onLaunchCommandCenter}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-sm transition flex items-center justify-center gap-2 shadow-sm"
+      {/* 6. Elevated Platform Statistics Strip with Weather Radar Texture */}
+      <StatsStrip />
+
+      {/* 7. Final Weather CTA Section */}
+      <CTASection onOpenDashboard={handleOpenDashboard} />
+
+      {/* 8. Weather Dark Footer with Prototype Disclaimer */}
+      <Footer />
+
+      {/* "Coming Soon" Modal for Dashboard Slot */}
+      {comingSoonModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn select-none"
+          onClick={() => setComingSoonModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-3xl bg-gradient-to-b from-[#111C35] via-[#0D162B] to-[#090F1E] border border-sky-500/40 p-6 sm:p-8 shadow-[0_0_60px_rgba(2,132,199,0.3)] text-center space-y-5"
+            onClick={(e) => e.stopPropagation()}
           >
-            <span>Launch Command Center</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onLaunchSimulationLab}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 font-semibold text-sm transition flex items-center justify-center gap-2 shadow-2xs"
-          >
-            <Zap className="w-4 h-4 text-amber-500" />
-            <span>Open Simulation Lab</span>
-          </button>
-        </div>
-      </section>
+            {/* Close Button */}
+            <button
+              onClick={() => setComingSoonModalOpen(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors border border-slate-700/60"
+            >
+              <X className="w-4 h-4" />
+            </button>
 
-      {/* 3 Core Analytical Dimensions */}
-      <section className="px-6 py-12 max-w-6xl mx-auto border-t border-slate-200">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Multi-Dimensional Telemetry Intelligence
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Tri-factor validation protects meteorologists from single-point false alarms
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
-            <div className="p-2.5 rounded-xl bg-cyan-50 text-cyan-700 w-fit">
-              <Globe2 className="w-5 h-5" />
+            {/* Weather Modal Icon */}
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 via-sky-500/20 to-indigo-600/20 border border-amber-400/40 flex items-center justify-center text-amber-300 shadow-inner">
+              <CloudSun className="w-8 h-8" />
             </div>
-            <h3 className="font-bold text-base text-slate-900">Spatial Consensus</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Compares observations with nearest physical neighbor AWS locations using Haversine distance and Inverse Distance Weighting (IDW).
-            </p>
-          </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
-            <div className="p-2.5 rounded-xl bg-blue-50 text-blue-700 w-fit">
-              <Activity className="w-5 h-5" />
+            {/* Content */}
+            <div className="space-y-2">
+              <span className="px-3 py-1 rounded-full bg-amber-400/10 text-amber-300 text-[11px] font-mono font-semibold border border-amber-400/30 inline-block">
+                DASHBOARD SLOT RESERVED
+              </span>
+              <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                Monitoring Dashboard
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-sm mx-auto">
+                The dashboard link is currently detached as requested. You can attach and wire your custom dashboard here when ready.
+              </p>
             </div>
-            <h3 className="font-bold text-base text-slate-900">Temporal Rate-of-Change</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Monitors rolling standard deviations and rate-of-change thresholds (e.g. max 5°C/hr under calm weather).
-            </p>
-          </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
-            <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-700 w-fit">
-              <BrainCircuit className="w-5 h-5" />
+            {/* Action Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+              <button
+                onClick={() => {
+                  setComingSoonModalOpen(false);
+                  handleExploreSystem();
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow-md flex items-center justify-center gap-1.5"
+              >
+                <span>Explore Architecture</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setComingSoonModalOpen(false)}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all"
+              >
+                Close
+              </button>
             </div>
-            <h3 className="font-bold text-base text-slate-900">Thermodynamic Physics</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Clausius-Clapeyron saturation vapor pressure bounds ensure coupled temperature, pressure, and humidity plausibility.
+
+            <p className="text-[10px] text-slate-500 font-mono">
+              SIH 2026 • Standalone Landing Page Architecture
             </p>
           </div>
         </div>
-      </section>
+      )}
+
     </div>
   );
 };

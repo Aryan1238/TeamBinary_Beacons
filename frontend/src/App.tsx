@@ -7,6 +7,8 @@ import { AIInvestigationModal } from './components/AIInvestigationModal';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
+import { DashboardApp } from './Dashboard/DashboardApp';
+import { Dashboard } from './Dashboard/Dashboard';
 import { CommandCenter } from './pages/CommandCenter';
 import { WeatherPortalPage } from './pages/WeatherPortalPage';
 import { LiveNetworkPage } from './pages/LiveNetworkPage';
@@ -26,7 +28,16 @@ import { api } from './services/api';
 
 export function App() {
   const [mode, setMode] = useState<'LIVE' | 'DEMO'>('LIVE');
-  const [currentTab, setCurrentTab] = useState<string>('command-center');
+  const [currentTab, setCurrentTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (path === '/dashboard' || hash === '#dashboard' || path === '/monitoring-dashboard' || hash === '#monitoring-dashboard') {
+        return 'dashboard-app';
+      }
+    }
+    return 'landing';
+  });
   const [selectedStationId, setSelectedStationId] = useState<string>('LOC-MH-02');
   const [stations, setStations] = useState<Station[]>([]);
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([]);
@@ -96,7 +107,22 @@ export function App() {
   useEffect(() => {
     refreshData();
     const interval = setInterval(refreshData, 3000);
-    return () => clearInterval(interval);
+
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (path === '/dashboard' || hash === '#dashboard' || path === '/monitoring-dashboard' || hash === '#monitoring-dashboard') {
+        setCurrentTab('dashboard-app');
+      } else if (path === '/' && !hash) {
+        setCurrentTab('landing');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   // WebSocket live streaming connection
@@ -156,8 +182,8 @@ export function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#070B14] text-slate-100 select-none">
-      {/* Persistent Left Sidebar (Hidden if in landing page mode) */}
-      {currentTab !== 'landing' && (
+      {/* Persistent Left Sidebar (Hidden if in landing, monitoring-dashboard, or dashboard-app mode) */}
+      {currentTab !== 'landing' && currentTab !== 'monitoring-dashboard' && currentTab !== 'dashboard-app' && (
         <Sidebar
           currentTab={currentTab}
           onSelectTab={(tab) => {
@@ -175,7 +201,7 @@ export function App() {
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* TopBar Header */}
-        {currentTab !== 'landing' && (
+        {currentTab !== 'landing' && currentTab !== 'monitoring-dashboard' && currentTab !== 'dashboard-app' && (
           <TopBar
             kpis={kpis}
             mode={mode}
@@ -198,8 +224,48 @@ export function App() {
         <main className="flex-1 overflow-hidden flex flex-col">
           {currentTab === 'landing' && (
             <LandingPage
-              onLaunchCommandCenter={() => setCurrentTab('command-center')}
-              onLaunchSimulationLab={() => setCurrentTab('simulation-lab')}
+              onOpenDashboard={() => {
+                setCurrentTab('dashboard-app');
+                if (typeof window !== 'undefined' && window.history.pushState) {
+                  window.history.pushState({}, '', '/dashboard');
+                }
+              }}
+              onLaunchCommandCenter={() => {
+                setCurrentTab('dashboard-app');
+                if (typeof window !== 'undefined' && window.history.pushState) {
+                  window.history.pushState({}, '', '/dashboard');
+                }
+              }}
+              onLaunchSimulationLab={() => {
+                setCurrentTab('dashboard-app');
+                if (typeof window !== 'undefined' && window.history.pushState) {
+                  window.history.pushState({}, '', '/dashboard');
+                }
+              }}
+            />
+          )}
+
+          {currentTab === 'dashboard-app' && (
+            <div className="w-full h-full overflow-y-auto">
+              <DashboardApp
+                onNavigateHome={() => {
+                  setCurrentTab('landing');
+                  if (typeof window !== 'undefined' && window.history.pushState) {
+                    window.history.pushState({}, '', '/');
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {currentTab === 'monitoring-dashboard' && (
+            <Dashboard
+              onBackToLanding={() => {
+                setCurrentTab('landing');
+                if (typeof window !== 'undefined' && window.history.pushState) {
+                  window.history.pushState({}, '', '/');
+                }
+              }}
             />
           )}
 
@@ -313,25 +379,25 @@ export function App() {
         </main>
       </div>
 
-      {/* Floating ⚡ SIH DEMO Controller */}
-      <SIHDemoController
-        onTriggerScenario={handleTriggerScenario}
-        onReset={handleResetSimulation}
-      />
-
-      {/* Floating SkyGuard Copilot Modal */}
-      <CopilotModal
-        isOpen={copilotOpen}
-        onClose={() => setCopilotOpen(false)}
-        contextStationId={selectedStationId}
-      />
-
-      {/* Deep AI Investigation Panel Modal */}
-      <AIInvestigationModal
-        anomaly={investigatingAnomaly}
-        onClose={() => setInvestigatingAnomaly(null)}
-        onAcceptCorrection={handleAcceptCorrection}
-      />
+      {/* Floating ⚡ SIH DEMO Controller & Legacy Modals (Hidden on landing & monitoring-dashboard) */}
+      {currentTab !== 'landing' && currentTab !== 'monitoring-dashboard' && (
+        <>
+          <SIHDemoController
+            onTriggerScenario={handleTriggerScenario}
+            onReset={handleResetSimulation}
+          />
+          <CopilotModal
+            isOpen={copilotOpen}
+            onClose={() => setCopilotOpen(false)}
+            contextStationId={selectedStationId}
+          />
+          <AIInvestigationModal
+            anomaly={investigatingAnomaly}
+            onClose={() => setInvestigatingAnomaly(null)}
+            onAcceptCorrection={handleAcceptCorrection}
+          />
+        </>
+      )}
     </div>
   );
 }
