@@ -32,7 +32,8 @@ export const CommandOverviewPage: React.FC<CommandOverviewPageProps> = ({
   onInvestigateAlert,
 }) => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | StationStatus>('ALL');
-  const { simulationStatus, tickCount } = useTelemetry();
+  const { simulationStatus, tickCount, activeFaults } = useTelemetry();
+  const activeFaultCount = Object.keys(activeFaults).length;
 
   const normalCount = stations.filter((s) => s.status === 'NORMAL').length;
   const warningCount = stations.filter((s) => s.status === 'WARNING').length;
@@ -78,11 +79,19 @@ export const CommandOverviewPage: React.FC<CommandOverviewPageProps> = ({
 
         <StatCard
           label="Active Anomalies"
-          value={anomalies.length}
+          value={anomalies.length + activeFaultCount}
           unit="Signals"
           icon={AlertTriangle}
-          trend={{ value: 1, isPositive: false, label: 'critical in AWS-003' }}
-          subtext="1 Critical, 1 High, 1 Medium"
+          trend={{
+            value: anomalies.length + activeFaultCount,
+            isPositive: activeFaultCount === 0,
+            label: activeFaultCount > 0 ? `${activeFaultCount} active fault(s)` : 'critical in AWS-003',
+          }}
+          subtext={
+            activeFaultCount > 0
+              ? `${activeFaultCount} testbench injected fault(s) active`
+              : '1 Critical, 1 High, 1 Medium'
+          }
           variant="rose"
         />
 

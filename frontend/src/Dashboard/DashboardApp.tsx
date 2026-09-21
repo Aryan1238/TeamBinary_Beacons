@@ -26,7 +26,7 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
     window.location.href = '/';
   },
 }) => {
-  const { stations } = useTelemetry();
+  const { stations, activeFaults } = useTelemetry();
   const [activeTab, setActiveTab] = useState<DashboardTab>('command-center');
   const [selectedStationId, setSelectedStationId] = useState<string>('AWS-001');
   const [selectedAlert, setSelectedAlert] = useState<AnomalyAlert>(MOCK_ANOMALIES[0]);
@@ -47,7 +47,7 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
       stations={stations}
       onSelectStation={handleSelectStation}
       onNavigateHome={onNavigateHome}
-      activeAnomaliesCount={MOCK_ANOMALIES.length}
+      activeAnomaliesCount={MOCK_ANOMALIES.length + Object.keys(activeFaults).length}
     >
       {activeTab === 'command-center' && (
         <CommandOverviewPage

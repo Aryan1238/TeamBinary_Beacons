@@ -47,7 +47,8 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
     stations.find((s) => s.id === selectedStationId) || stations[0];
 
   const [activeSensor, setActiveSensor] = useState<SensorType>('temperature');
-  const { simulationStatus, historyBuffers, recentReadings } = useTelemetry();
+  const { simulationStatus, historyBuffers, recentReadings, activeFaults, clearFault } = useTelemetry();
+  const currentActiveFault = activeFaults[currentStation.id];
 
   const sensorConfig: Record<
     SensorType,
@@ -153,6 +154,24 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
             </div>
           )}
 
+          {/* Active Fault Indicator Pill with Quick Clear Button */}
+          {currentActiveFault && (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-200 text-xs font-mono font-bold shadow-[0_0_15px_rgba(245,158,11,0.25)]">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+              </span>
+              <span>FAULT: {currentActiveFault.label.toUpperCase()} (TICK #{currentActiveFault.ticksActive})</span>
+              <button
+                onClick={() => clearFault(currentStation.id)}
+                className="ml-1 px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] uppercase font-sans font-semibold tracking-wide transition-colors cursor-pointer"
+                title="Clear Active Fault and Resume Normal Stream"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
           <span className="text-xs text-slate-400 font-mono hidden sm:inline">
             Lat {currentStation.coordinates.lat}°N, Lng {currentStation.coordinates.lng}°E • Elev {currentStation.elevationMeters}m
           </span>
@@ -177,6 +196,7 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
           const reading = currentStation.sensors[st];
           const isSelected = activeSensor === st;
           const isAnomaly = reading.status === 'ANOMALY';
+          const isFaulted = currentActiveFault && currentActiveFault.sensor === st;
 
           return (
             <button
@@ -185,14 +205,18 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
               className={`p-4 rounded-2xl border text-left transition-all backdrop-blur-md relative overflow-hidden group ${
                 isSelected
                   ? cfg.activeGlow
+                  : isFaulted
+                  ? 'bg-gradient-to-b from-[#2a1b12]/80 to-[#090e1c]/80 border-amber-500/60 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
                   : 'bg-gradient-to-b from-[#111a31]/60 to-[#090e1c]/80 border-slate-800/80 hover:border-slate-700 hover:bg-slate-800/40 text-slate-400'
               }`}
             >
               <div className="flex items-center justify-between">
-                <Icon className={`w-4 h-4 transition-colors ${isSelected ? 'text-current' : 'text-slate-400 group-hover:text-slate-200'}`} />
-                {isAnomaly && (
+                <Icon className={`w-4 h-4 transition-colors ${isSelected || isFaulted ? 'text-current' : 'text-slate-400 group-hover:text-slate-200'}`} />
+                {isFaulted ? (
+                  <span className="text-[10px] font-mono font-bold text-amber-400 animate-pulse">⚡ FAULT</span>
+                ) : isAnomaly ? (
                   <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" title="Anomaly Detected" />
-                )}
+                ) : null}
               </div>
               <div className="mt-2.5">
                 <span className="text-xs font-medium block truncate text-slate-300">{cfg.label}</span>
@@ -411,18 +435,58 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
               ) : (
                 stationLogs.map((entry, idx) => {
                   const isLatest = idx === 0 && simulationStatus === 'RUNNING';
+
+                  if (entry.flag === 'failure') {
+                    return (
+                      <tr
+                        key={entry.id}
+                        className="bg-rose-950/25 border-l-2 border-rose-500 text-rose-300 font-mono"
+                      >
+                        <td colSpan={6} className="py-2.5 px-3">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                            <span className="font-bold text-rose-300">{entry.timestamp}</span>
+                            <span className="text-slate-500">•</span>
+                            <span className="text-rose-200">
+                              {entry.transitionNote || `${currentStation.id} — No telemetry received — Communication Failure`}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                            MODEM OFFLINE
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  }
+
                   return (
                     <tr
                       key={entry.id}
                       className={`hover:bg-slate-800/30 transition-colors ${
-                        isLatest ? 'bg-emerald-500/[0.06] text-slate-100' : 'text-slate-300'
+                        entry.flag === 'injected'
+                          ? 'bg-amber-500/[0.08] border-l-2 border-amber-400 text-slate-100'
+                          : isLatest
+                          ? 'bg-emerald-500/[0.06] text-slate-100'
+                          : 'text-slate-300'
                       }`}
                     >
-                      <td className="py-2.5 px-3 flex items-center gap-2">
-                        {isLatest && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-1.5">
+                          {isLatest && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          )}
+                          {entry.flag === 'injected' && (
+                            <span className="text-amber-400 text-xs">⚡</span>
+                          )}
+                          <span className="text-slate-200 font-semibold">{entry.timestamp}</span>
+                        </div>
+                        {entry.transitionNote && entry.flag === 'injected' && (
+                          <div className="text-[10px] text-amber-300/90 font-mono mt-0.5">
+                            {entry.transitionNote}
+                          </div>
                         )}
-                        <span className="text-slate-200 font-semibold">{entry.timestamp}</span>
                       </td>
                       <td className="py-2.5 px-3 font-bold text-amber-300">
                         {entry.temperature.toFixed(1)}
@@ -440,9 +504,15 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
                         {entry.rainfall.toFixed(1)}
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                          VERIFIED
-                        </span>
+                        {entry.flag === 'injected' ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            INJECTED FAULT
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            VERIFIED
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );

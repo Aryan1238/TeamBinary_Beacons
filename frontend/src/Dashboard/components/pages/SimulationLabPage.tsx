@@ -5,6 +5,9 @@ import {
   Sliders,
   AlertTriangle,
   CheckCircle2,
+  Radio,
+  Zap,
+  RadioOff,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -20,87 +23,148 @@ import { PageHeader } from '../common/PageHeader';
 import { ChartWrapper } from '../common/ChartWrapper';
 import type { SimulationScenario } from '../../types/dashboard.types';
 import { MOCK_24H_HISTORY } from '../../data/mockStations';
+import { useTelemetry, FaultType } from '../../context/TelemetryContext';
 
 export const SimulationLabPage: React.FC = () => {
+  const {
+    stations,
+    simulationStatus,
+    historyBuffers,
+    activeFaults,
+    injectFault,
+    clearFault,
+  } = useTelemetry();
+
+  const [selectedStationId, setSelectedStationId] = useState<string>('AWS-003');
   const [activeScenario, setActiveScenario] = useState<SimulationScenario>('sudden-spike');
   const [offsetMagnitude, setOffsetMagnitude] = useState<number>(14);
   const [noiseLevel, setNoiseLevel] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
 
-  const baseData = MOCK_24H_HISTORY['AWS-001'];
+  const currentStation = stations.find((s) => s.id === selectedStationId) || stations[0];
+  const stationActiveFault = activeFaults[currentStation.id];
 
-  const simulatedData = baseData.map((pt, i) => {
-    let temp = pt.temperature;
-    let hum = pt.humidity;
-    let press = pt.pressure;
+  // Real-time live history data for selected station
+  const liveHistory = historyBuffers[currentStation.id] || MOCK_24H_HISTORY[currentStation.id] || MOCK_24H_HISTORY['AWS-001'];
 
-    const noise = noiseLevel === 'HIGH' ? (Math.sin(i * 3) * 1.5) : noiseLevel === 'MEDIUM' ? (Math.sin(i * 2) * 0.5) : 0;
-
-    if (activeScenario === 'sudden-spike' && i >= 14) {
-      temp += offsetMagnitude + noise;
-    } else if (activeScenario === 'gradual-drift' && i >= 8) {
-      temp += ((i - 8) * (offsetMagnitude / 10)) + noise;
-    } else if (activeScenario === 'frozen-sensor' && i >= 10) {
-      temp = 32.4;
-    } else if (activeScenario === 'humidity-spike' && i >= 12) {
-      hum = 98;
-      temp += 10 + noise;
-    } else if (activeScenario === 'pressure-drop' && i >= 14) {
-      press -= 35;
-      temp += noise;
+  const handleApplyInjection = () => {
+    if (activeScenario === 'normal') {
+      clearFault(currentStation.id);
     } else {
-      temp += noise;
+      injectFault(currentStation.id, activeScenario as FaultType);
     }
-
-    return {
-      time: pt.time,
-      temperature: Math.round(temp * 10) / 10,
-      humidity: Math.round(hum),
-      pressure: Math.round(press),
-    };
-  });
-
-  const resetToNormal = () => {
-    setActiveScenario('normal');
-    setOffsetMagnitude(0);
-    setNoiseLevel('LOW');
   };
 
-  const isAnomalous = activeScenario !== 'normal';
+  const handleClearFault = () => {
+    clearFault(currentStation.id);
+    setActiveScenario('normal');
+  };
+
+  const isAnomalous = activeScenario !== 'normal' || !!stationActiveFault;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Simulation Lab & Fault Injection Testbench"
         subtitle="Controlled experimental harness to stress-test anomaly detection models against synthetic sensor failures."
-        badge="ALGORITHMIC TESTBENCH"
+        badge={simulationStatus === 'RUNNING' ? 'LIVE FAULT INJECTOR ACTIVE' : 'ALGORITHMIC TESTBENCH'}
       />
 
-      {/* Scenario Presets Bar */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl space-y-3 relative overflow-hidden">
-        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-amber-400/20 to-transparent" />
-
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2 tracking-tight">
-            <FlaskConical className="w-4 h-4 text-amber-400" />
-            <span>Select Fault Injection Scenario</span>
-          </h3>
+      {/* Fleet Active Faults Summary Banner */}
+      {Object.keys(activeFaults).length > 0 && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-3 shadow-lg backdrop-blur-md">
+          <div className="flex flex-wrap items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-400 animate-pulse" />
+            <span className="text-xs font-semibold text-amber-200">
+              Active Fault Injections in Fleet ({Object.keys(activeFaults).length}):
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.values(activeFaults).map((f) => (
+                <span
+                  key={f.stationId}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                >
+                  <span>{f.stationId}</span>
+                  <span className="text-amber-400 font-bold">•</span>
+                  <span>{f.label}</span>
+                  <button
+                    onClick={() => clearFault(f.stationId)}
+                    className="hover:text-white font-bold ml-1 text-amber-300 hover:text-rose-300"
+                    title="Clear Fault"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
           <button
-            onClick={resetToNormal}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-mono font-semibold bg-slate-900 text-slate-300 hover:text-white border border-slate-800 transition-colors"
+            onClick={() => Object.keys(activeFaults).forEach((id) => clearFault(id))}
+            className="text-[11px] font-mono text-amber-300 hover:text-white underline cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset to Nominal</span>
+            Clear All Active Faults
           </button>
         </div>
+      )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+      {/* Target Station & Scenario Presets Bar */}
+      <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl space-y-4 relative overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-amber-400/20 to-transparent" />
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2 tracking-tight">
+              <FlaskConical className="w-4 h-4 text-amber-400" />
+              <span>Fault Injection Testbench</span>
+            </h3>
+
+            {/* Target Station Selector */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="target-station" className="text-xs font-mono font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                <Radio className="w-3.5 h-3.5 text-sky-400" />
+                Target:
+              </label>
+              <select
+                id="target-station"
+                value={selectedStationId}
+                onChange={(e) => setSelectedStationId(e.target.value)}
+                className="px-3 py-1.5 rounded-xl bg-[#090e1c] border border-slate-700 text-xs font-semibold text-white focus:outline-none focus:border-amber-500"
+              >
+                {stations.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.id} — {s.name} ({s.status}) {activeFaults[s.id] ? '⚡ [ACTIVE FAULT]' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {stationActiveFault && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>ACTIVE: {stationActiveFault.label.toUpperCase()}</span>
+              </span>
+            )}
+            <button
+              onClick={handleClearFault}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold bg-slate-900 text-slate-300 hover:text-white border border-slate-800 transition-colors"
+              title="Clear active fault on selected station"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Clear Fault</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
           {[
             { id: 'normal', label: 'Nominal Baseline', desc: 'Zero faults active' },
-            { id: 'sudden-spike', label: 'Sudden Step Spike', desc: '+14°C step at 14:00' },
-            { id: 'gradual-drift', label: 'Gradual Drift', desc: '+0.5°C / hr drift' },
+            { id: 'sudden-spike', label: 'Sudden Step Spike', desc: '+12°C step jump' },
+            { id: 'gradual-drift', label: 'Gradual Drift', desc: '+0.8°C / tick drift' },
             { id: 'frozen-sensor', label: 'Frozen / Flatline', desc: 'Zero variance stuck' },
-            { id: 'humidity-spike', label: 'Thermodynamic Conflict', desc: 'High temp + 98% hum' },
-            { id: 'pressure-drop', label: 'Pressure Drop', desc: '-35 hPa abrupt fall' },
+            { id: 'humidity-spike', label: 'Humidity Spike', desc: 'Jump to 98% RH' },
+            { id: 'pressure-drop', label: 'Pressure Drop', desc: '-17 hPa abrupt drop' },
+            { id: 'communication-failure', label: 'Telemetry Failure', desc: 'Offline / Signal drop' },
           ].map((sc) => (
             <button
               key={sc.id}
@@ -109,13 +173,16 @@ export const SimulationLabPage: React.FC = () => {
                 if (sc.id === 'normal') setOffsetMagnitude(0);
                 else if (offsetMagnitude === 0) setOffsetMagnitude(14);
               }}
-              className={`p-3.5 rounded-xl border text-left transition-all ${
+              className={`p-3 rounded-xl border text-left transition-all ${
                 activeScenario === sc.id
                   ? 'bg-amber-500/20 border-amber-500/50 text-amber-200 shadow-[0_0_15px_rgba(251,191,36,0.2)]'
                   : 'bg-[#0a101f]/70 border-slate-800/80 hover:bg-slate-800/50 text-slate-400 hover:text-slate-200'
               }`}
             >
-              <div className="text-xs font-bold text-white tracking-tight">{sc.label}</div>
+              <div className="text-xs font-bold text-white tracking-tight flex items-center justify-between">
+                <span>{sc.label}</span>
+                {sc.id === 'communication-failure' && <RadioOff className="w-3 h-3 text-slate-400" />}
+              </div>
               <div className="text-[10px] text-slate-400 mt-1 font-mono">{sc.desc}</div>
             </button>
           ))}
@@ -127,13 +194,28 @@ export const SimulationLabPage: React.FC = () => {
         {/* Real-time Dynamic Injected Chart */}
         <div className="lg:col-span-3">
           <ChartWrapper
-            title={`Simulated Stream — Scenario: ${activeScenario.toUpperCase()}`}
-            subtitle="Real-time waveform response as synthetic faults are applied to the time series."
-            badge="SYNTHETIC WAVEFORM"
+            title={`Telemetry Waveform — ${currentStation.name} (${currentStation.id})`}
+            subtitle={`Real-time sensor waveform response. Active scenario: ${activeScenario.toUpperCase()}${stationActiveFault ? ` • [INJECTED: ${stationActiveFault.label}]` : ''}`}
+            badge={simulationStatus === 'RUNNING' ? 'LIVE STREAM' : 'SYNTHETIC WAVEFORM'}
             height={360}
+            controls={
+              <div className="flex items-center gap-3 text-xs text-slate-400 font-mono">
+                {stationActiveFault && (
+                  <span className="flex items-center gap-1 text-amber-300 font-bold animate-pulse">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Fault Injected at {stationActiveFault.injectedAt}</span>
+                  </span>
+                )}
+                {simulationStatus !== 'RUNNING' && (
+                  <span className="text-slate-500 text-[11px]">
+                    (Click "Start" in header to advance live ticks)
+                  </span>
+                )}
+              </div>
+            }
           >
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={simulatedData} margin={{ top: 15, right: 20, left: -10, bottom: 0 }}>
+              <LineChart data={liveHistory} margin={{ top: 15, right: 20, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1c253d" />
                 <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
                 <YAxis stroke="#64748b" fontSize={11} tickLine={false} domain={['auto', 'auto']} />
@@ -148,10 +230,16 @@ export const SimulationLabPage: React.FC = () => {
                   }}
                 />
                 <ReferenceLine
-                  y={38}
+                  y={currentStation.sensors.temperature.expectedMax}
                   stroke="#f43f5e"
                   strokeDasharray="4 4"
-                  label={{ value: 'Normal Envelope Ceiling (38°C)', fill: '#f43f5e', fontSize: 10, position: 'insideTopRight' }}
+                  label={{ value: `Upper Threshold (${currentStation.sensors.temperature.expectedMax}°C)`, fill: '#f43f5e', fontSize: 10, position: 'insideTopRight' }}
+                />
+                <ReferenceLine
+                  y={currentStation.sensors.temperature.expectedMin}
+                  stroke="#38bdf8"
+                  strokeDasharray="4 4"
+                  label={{ value: `Lower Threshold (${currentStation.sensors.temperature.expectedMin}°C)`, fill: '#38bdf8', fontSize: 10, position: 'insideBottomRight' }}
                 />
                 <Line
                   type="monotone"
@@ -170,9 +258,33 @@ export const SimulationLabPage: React.FC = () => {
         <div className="space-y-4">
           <div className="p-5 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center justify-between font-mono">
-              <span>Fault Parameters</span>
+              <span>Fault Injection Controls</span>
               <Sliders className="w-4 h-4 text-amber-400" />
             </h4>
+
+            {/* Prominent Action Button: Inject into Live Feed */}
+            <div className="space-y-2">
+              <button
+                onClick={handleApplyInjection}
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-lg shadow-amber-950/50 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+              >
+                <Zap className="w-4 h-4 fill-current" />
+                <span>Inject Fault into Live Feed</span>
+              </button>
+
+              <button
+                onClick={handleClearFault}
+                disabled={!stationActiveFault}
+                className={`w-full py-2 px-3 rounded-xl text-xs font-mono font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  stationActiveFault
+                    ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer'
+                    : 'bg-slate-900/40 text-slate-600 border border-slate-800/40 cursor-not-allowed'
+                }`}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Clear Fault on {currentStation.id}</span>
+              </button>
+            </div>
 
             {/* Magnitude Slider */}
             <div>
