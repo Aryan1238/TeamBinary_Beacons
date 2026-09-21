@@ -5,9 +5,12 @@ import {
   Bell,
   Search,
   ExternalLink,
-  Cpu,
+  Play,
+  Pause,
+  RotateCcw,
 } from 'lucide-react';
 import type { DashboardTab, AWSStation } from '../../types/dashboard.types';
+import { useTelemetry } from '../../context/TelemetryContext';
 
 interface DashboardTopBarProps {
   activeTab: DashboardTab;
@@ -44,6 +47,14 @@ export const DashboardTopBar: React.FC<DashboardTopBarProps> = ({
   const [time, setTime] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const {
+    simulationStatus,
+    tickCount,
+    startSimulation,
+    pauseSimulation,
+    resetSimulation,
+  } = useTelemetry();
 
   useEffect(() => {
     const updateTime = () => {
@@ -156,10 +167,73 @@ export const DashboardTopBar: React.FC<DashboardTopBarProps> = ({
           <span>{time || '--:--:-- IST'}</span>
         </div>
 
-        {/* Prototype Simulated Banner with Soft Amber Glow */}
-        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-[11px] font-semibold text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-          <Cpu className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-          <span className="tracking-wide">SIMULATED AWS PIPELINE</span>
+        {/* Simulation Controls Cluster */}
+        <div className="flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl bg-[#070b16]/90 border border-slate-800/90 shadow-inner backdrop-blur-md">
+          {/* Status Pill */}
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-mono font-semibold transition-all ${
+              simulationStatus === 'RUNNING'
+                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                : simulationStatus === 'PAUSED'
+                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                : 'bg-slate-800/60 text-slate-400 border border-slate-700/60'
+            }`}
+          >
+            {simulationStatus === 'RUNNING' && (
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+            )}
+            {simulationStatus === 'PAUSED' && (
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+            )}
+            {simulationStatus === 'STOPPED' && (
+              <span className="w-2 h-2 rounded-full bg-slate-500" />
+            )}
+            <span className="tracking-wide text-[10px] sm:text-[11px]">
+              {simulationStatus === 'RUNNING' ? 'RUNNING' : simulationStatus === 'PAUSED' ? 'PAUSED' : 'STOPPED'}
+            </span>
+            {tickCount > 0 && (
+              <span className="text-[10px] text-slate-400 hidden xl:inline font-mono">
+                • #{tickCount}
+              </span>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1">
+            {simulationStatus !== 'RUNNING' ? (
+              <button
+                onClick={startSimulation}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/40 transition-all active:scale-95 cursor-pointer"
+                title={simulationStatus === 'PAUSED' ? 'Resume Simulation' : 'Start Simulation'}
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span className="hidden sm:inline">
+                  {simulationStatus === 'PAUSED' ? 'Resume' : 'Start'}
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={pauseSimulation}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-all active:scale-95 cursor-pointer"
+                title="Pause Simulation"
+              >
+                <Pause className="w-3.5 h-3.5 fill-current" />
+                <span className="hidden sm:inline">Pause</span>
+              </button>
+            )}
+
+            <button
+              onClick={resetSimulation}
+              className="flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-transparent hover:border-slate-700/60 transition-all active:scale-95 cursor-pointer"
+              title="Reset Simulation to Baseline Values"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Reset</span>
+            </button>
+          </div>
         </div>
 
         {/* Alert Bell with Warm Coral-Red Dot */}

@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Database,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -27,6 +28,7 @@ import { StatusBadge } from '../common/StatusBadge';
 import { ChartWrapper } from '../common/ChartWrapper';
 import type { AWSStation, SensorType, DashboardTab } from '../../types/dashboard.types';
 import { MOCK_24H_HISTORY } from '../../data/mockStations';
+import { useTelemetry } from '../../context/TelemetryContext';
 
 interface LiveMonitoringPageProps {
   stations: AWSStation[];
@@ -45,6 +47,7 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
     stations.find((s) => s.id === selectedStationId) || stations[0];
 
   const [activeSensor, setActiveSensor] = useState<SensorType>('temperature');
+  const { simulationStatus, historyBuffers, recentReadings } = useTelemetry();
 
   const sensorConfig: Record<
     SensorType,
@@ -94,14 +97,15 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
 
   const currentReading = currentStation.sensors[activeSensor];
   const activeCfg = sensorConfig[activeSensor];
-  const historyData = MOCK_24H_HISTORY[currentStation.id] || MOCK_24H_HISTORY['AWS-001'];
+  const historyData = historyBuffers[currentStation.id] || MOCK_24H_HISTORY[currentStation.id] || [];
+  const stationLogs = recentReadings[currentStation.id] || [];
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Live Sensor Telemetry"
         subtitle={`Real-time high-rate sensor streams for ${currentStation.name} (${currentStation.id}) with envelope anomaly thresholds.`}
-        badge="HIGH FREQUENCY SAMPLING"
+        badge={simulationStatus === 'RUNNING' ? 'LIVE TELEMETRY STREAM' : 'HIGH FREQUENCY SAMPLING'}
       />
 
       {/* Station Selector Bar */}
@@ -125,6 +129,29 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
           </select>
 
           <StatusBadge status={currentStation.status} />
+
+          {/* Dynamic Live Status Indicator */}
+          {simulationStatus === 'RUNNING' && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-mono font-semibold shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              <span>LIVE</span>
+            </div>
+          )}
+          {simulationStatus === 'PAUSED' && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[11px] font-mono font-semibold">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span>PAUSED</span>
+            </div>
+          )}
+          {simulationStatus === 'STOPPED' && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/60 border border-slate-700/60 text-slate-400 text-[11px] font-mono font-semibold">
+              <span className="w-2 h-2 rounded-full bg-slate-500" />
+              <span>STANDBY</span>
+            </div>
+          )}
 
           <span className="text-xs text-slate-400 font-mono hidden sm:inline">
             Lat {currentStation.coordinates.lat}°N, Lng {currentStation.coordinates.lng}°E • Elev {currentStation.elevationMeters}m
@@ -334,6 +361,95 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
                 : 'Sensor envelope correlates with barometric curve and local solar radiation model.'}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Live Ingestion Telemetry Stream Table */}
+      <div className="p-5 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-sky-400" />
+              <h3 className="text-sm font-bold text-white tracking-wide uppercase font-mono">
+                Recent Ingested Packets — {currentStation.name} ({currentStation.id})
+              </h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Rolling queue of the latest telemetry frames transmitted by onboard micro-controller modem.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${simulationStatus === 'RUNNING' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+              Channel: MQTT over TLS
+            </span>
+            <span className="text-slate-600">•</span>
+            <span>QoS 1 Ack</span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-800 text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+                <th className="py-2.5 px-3">Packet Timestamp</th>
+                <th className="py-2.5 px-3">Temp (°C)</th>
+                <th className="py-2.5 px-3">Humidity (%)</th>
+                <th className="py-2.5 px-3">Pressure (hPa)</th>
+                <th className="py-2.5 px-3">Wind (km/h)</th>
+                <th className="py-2.5 px-3">Rain (mm)</th>
+                <th className="py-2.5 px-3">Payload Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-mono">
+              {stationLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-slate-500">
+                    Awaiting telemetry packets...
+                  </td>
+                </tr>
+              ) : (
+                stationLogs.map((entry, idx) => {
+                  const isLatest = idx === 0 && simulationStatus === 'RUNNING';
+                  return (
+                    <tr
+                      key={entry.id}
+                      className={`hover:bg-slate-800/30 transition-colors ${
+                        isLatest ? 'bg-emerald-500/[0.06] text-slate-100' : 'text-slate-300'
+                      }`}
+                    >
+                      <td className="py-2.5 px-3 flex items-center gap-2">
+                        {isLatest && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        )}
+                        <span className="text-slate-200 font-semibold">{entry.timestamp}</span>
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-amber-300">
+                        {entry.temperature.toFixed(1)}
+                      </td>
+                      <td className="py-2.5 px-3 text-sky-300">
+                        {entry.humidity.toFixed(0)}%
+                      </td>
+                      <td className="py-2.5 px-3 text-indigo-300">
+                        {entry.pressure.toFixed(1)}
+                      </td>
+                      <td className="py-2.5 px-3 text-emerald-300">
+                        {entry.wind.toFixed(1)}
+                      </td>
+                      <td className="py-2.5 px-3 text-blue-300">
+                        {entry.rainfall.toFixed(1)}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          VERIFIED
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

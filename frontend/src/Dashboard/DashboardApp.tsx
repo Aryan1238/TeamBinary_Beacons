@@ -13,18 +13,20 @@ import { SensorHealthPage } from './components/pages/SensorHealthPage';
 import { ResponseMaintenancePage } from './components/pages/ResponseMaintenancePage';
 import { SimulationLabPage } from './components/pages/SimulationLabPage';
 
-import { MOCK_STATIONS, MOCK_ANOMALIES } from './data/mockStations';
+import { MOCK_ANOMALIES } from './data/mockStations';
 import type { DashboardTab, AnomalyAlert } from './types/dashboard.types';
+import { TelemetryProvider, useTelemetry } from './context/TelemetryContext';
 
 interface DashboardAppProps {
   onNavigateHome?: () => void;
 }
 
-export const DashboardApp: React.FC<DashboardAppProps> = ({
+const DashboardContent: React.FC<DashboardAppProps> = ({
   onNavigateHome = () => {
     window.location.href = '/';
   },
 }) => {
+  const { stations } = useTelemetry();
   const [activeTab, setActiveTab] = useState<DashboardTab>('command-center');
   const [selectedStationId, setSelectedStationId] = useState<string>('AWS-001');
   const [selectedAlert, setSelectedAlert] = useState<AnomalyAlert>(MOCK_ANOMALIES[0]);
@@ -42,14 +44,14 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({
     <DashboardLayout
       activeTab={activeTab}
       onSelectTab={setActiveTab}
-      stations={MOCK_STATIONS}
+      stations={stations}
       onSelectStation={handleSelectStation}
       onNavigateHome={onNavigateHome}
       activeAnomaliesCount={MOCK_ANOMALIES.length}
     >
       {activeTab === 'command-center' && (
         <CommandOverviewPage
-          stations={MOCK_STATIONS}
+          stations={stations}
           anomalies={MOCK_ANOMALIES}
           onSelectStation={handleSelectStation}
           onNavigateTab={setActiveTab}
@@ -59,7 +61,7 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({
 
       {activeTab === 'live-monitoring' && (
         <LiveMonitoringPage
-          stations={MOCK_STATIONS}
+          stations={stations}
           selectedStationId={selectedStationId}
           onSelectStation={handleSelectStation}
           onNavigateTab={setActiveTab}
@@ -67,12 +69,12 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({
       )}
 
       {activeTab === 'live-weather' && (
-        <LiveWeatherPage stations={MOCK_STATIONS} />
+        <LiveWeatherPage stations={stations} />
       )}
 
       {activeTab === 'station-map' && (
         <StationMapPage
-          stations={MOCK_STATIONS}
+          stations={stations}
           onSelectStation={handleSelectStation}
           onNavigateTab={setActiveTab}
         />
@@ -95,22 +97,22 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({
 
       {activeTab === 'cross-station' && (
         <CrossStationIntelligencePage
-          stations={MOCK_STATIONS}
+          stations={stations}
           onNavigateTab={setActiveTab}
         />
       )}
 
       {activeTab === 'historical-analysis' && (
-        <HistoricalAnalysisPage stations={MOCK_STATIONS} />
+        <HistoricalAnalysisPage stations={stations} />
       )}
 
       {activeTab === 'weather-analytics' && (
-        <WeatherAnalyticsPage stations={MOCK_STATIONS} />
+        <WeatherAnalyticsPage stations={stations} />
       )}
 
       {activeTab === 'sensor-health' && (
         <SensorHealthPage
-          stations={MOCK_STATIONS}
+          stations={stations}
           onSelectStation={handleSelectStation}
           onNavigateTab={setActiveTab}
         />
@@ -122,6 +124,14 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({
 
       {activeTab === 'simulation-lab' && <SimulationLabPage />}
     </DashboardLayout>
+  );
+};
+
+export const DashboardApp: React.FC<DashboardAppProps> = (props) => {
+  return (
+    <TelemetryProvider>
+      <DashboardContent {...props} />
+    </TelemetryProvider>
   );
 };
 

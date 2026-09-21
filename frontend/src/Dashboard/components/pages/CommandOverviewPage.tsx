@@ -14,6 +14,7 @@ import { StatCard } from '../common/StatCard';
 import { StationCard } from '../common/StationCard';
 import { AlertRow } from '../common/AlertRow';
 import type { AWSStation, AnomalyAlert, DashboardTab, StationStatus } from '../../types/dashboard.types';
+import { useTelemetry } from '../../context/TelemetryContext';
 
 interface CommandOverviewPageProps {
   stations: AWSStation[];
@@ -31,6 +32,7 @@ export const CommandOverviewPage: React.FC<CommandOverviewPageProps> = ({
   onInvestigateAlert,
 }) => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | StationStatus>('ALL');
+  const { simulationStatus, tickCount } = useTelemetry();
 
   const normalCount = stations.filter((s) => s.status === 'NORMAL').length;
   const warningCount = stations.filter((s) => s.status === 'WARNING').length;
@@ -50,7 +52,7 @@ export const CommandOverviewPage: React.FC<CommandOverviewPageProps> = ({
       <PageHeader
         title="AWS Network Command Center"
         subtitle="Fleet-wide health telemetry, spatial status, and real-time anomaly surveillance across Indian Meteorological Stations."
-        badge="CENTRAL TELEMETRY RADAR"
+        badge={simulationStatus === 'RUNNING' ? 'LIVE RADAR STREAM' : 'CENTRAL TELEMETRY RADAR'}
       />
 
       {/* KPI Stats Row — Thematic Color Assignment */}
@@ -86,11 +88,17 @@ export const CommandOverviewPage: React.FC<CommandOverviewPageProps> = ({
 
         <StatCard
           label="Telemetry Throughput"
-          value="480"
+          value={simulationStatus === 'RUNNING' ? `${480 + (tickCount % 4) * 6}` : '480'}
           unit="pkts/min"
           icon={Activity}
           trend={{ value: 99.8, isPositive: true, label: 'packet fidelity' }}
-          subtext="High-rate 5s synthetic sampling"
+          subtext={
+            simulationStatus === 'RUNNING'
+              ? `Live Tick #${tickCount} • Active Stream`
+              : simulationStatus === 'PAUSED'
+              ? 'Stream Paused at current tick'
+              : 'Standby baseline mode'
+          }
           variant="indigo"
         />
       </div>
