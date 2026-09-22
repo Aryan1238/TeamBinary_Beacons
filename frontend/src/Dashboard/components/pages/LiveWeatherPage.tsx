@@ -194,7 +194,7 @@ export const LiveWeatherPage: React.FC<LiveWeatherPageProps> = ({
           >
             {stations.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name} ({s.location}, {s.state})
+                {s.id} — {s.name} ({s.state}) {s.dataSource || '[Meteostat + NOAA]'}
               </option>
             ))}
           </select>
@@ -202,7 +202,7 @@ export const LiveWeatherPage: React.FC<LiveWeatherPageProps> = ({
           <span className="text-xs text-slate-400 font-mono hidden md:inline">
             Lat {currentStation.coordinates.lat.toFixed(3)}°N, Lng{' '}
             {currentStation.coordinates.lng.toFixed(3)}°E • Elev{' '}
-            {currentStation.elevationMeters}m
+            {currentStation.elevationMeters}m • <span className="text-sky-400 font-semibold">{currentStation.dataSource || '[Meteostat + NOAA]'}</span>
           </span>
         </div>
 

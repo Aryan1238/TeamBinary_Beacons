@@ -47,6 +47,9 @@ export const StationCard: React.FC<StationCardProps> = ({
             <span className="text-[10px] font-mono text-slate-400 px-1.5 py-0.5 rounded bg-slate-900/80 border border-slate-800">
               {station.region}
             </span>
+            <span className="text-[9px] font-mono font-semibold text-sky-400 px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/30">
+              {station.dataSource || '[Meteostat + NOAA]'}
+            </span>
           </div>
           <h3 className="font-bold text-white text-sm tracking-tight mt-1 group-hover:text-sky-200 transition-colors">
             {station.name}

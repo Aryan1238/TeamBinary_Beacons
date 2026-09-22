@@ -131,7 +131,7 @@ export const SimulationLabPage: React.FC = () => {
               >
                 {stations.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.id} — {s.name} ({s.status}) {activeFaults[s.id] ? '⚡ [ACTIVE FAULT]' : ''}
+                    {s.id} — {s.name} {s.dataSource || '[Meteostat + NOAA]'} ({s.status}) {activeFaults[s.id] ? '⚡ [ACTIVE FAULT]' : ''}
                   </option>
                 ))}
               </select>

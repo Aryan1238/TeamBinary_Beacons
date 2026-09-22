@@ -46,7 +46,7 @@ export const HistoricalAnalysisPage: React.FC<HistoricalAnalysisPageProps> = ({ 
             >
               {stations.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.id} — {s.name}
+                  {s.id} — {s.name} ({s.state}) {s.dataSource || '[Meteostat + NOAA]'}
                 </option>
               ))}
             </select>

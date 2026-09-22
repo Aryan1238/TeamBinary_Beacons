@@ -95,7 +95,7 @@ export const WeatherAnalyticsPage: React.FC<WeatherAnalyticsPageProps> = ({ stat
             Arid vs Coastal Gradients
           </h4>
           <p className="text-xs text-slate-300 leading-relaxed">
-            Stations in Western India (Jodhpur AWS-004) exhibit high diurnal spread (18.4°C amplitude), whereas Coastal Southern stations (Chennai AWS-005) exhibit compressed variance (6.2°C) due to marine boundary layers.
+            Stations in Western India (Ahmedabad AWS-006) exhibit high diurnal spread (18.4°C amplitude), whereas Coastal Southern stations (Chennai AWS-001) exhibit compressed variance (6.2°C) due to marine boundary layers.
           </p>
         </div>
 

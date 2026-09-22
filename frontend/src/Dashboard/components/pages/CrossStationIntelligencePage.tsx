@@ -33,21 +33,22 @@ export const CrossStationIntelligencePage: React.FC<CrossStationIntelligencePage
 
   const targetStation = stations.find((s) => s.id === targetId) || stations[2];
 
-  // Pick 3 neighbors (Delhi, Jodhpur, Shimla)
-  const neighbors = [
-    stations.find((s) => s.id === 'AWS-001') || stations[0],
-    stations.find((s) => s.id === 'AWS-004') || stations[3],
-    stations.find((s) => s.id === 'AWS-002') || stations[1],
-  ];
+  // Pick 3 neighbors dynamically from other stations
+  const otherStations = stations.filter((s) => s.id !== targetStation.id);
+  const nb1 = otherStations[0] || stations[0];
+  const nb2 = otherStations[1] || stations[1];
+  const nb3 = otherStations[2] || stations[2];
+  const neighbors = [nb1, nb2, nb3];
 
   // Combined 24h data for the 4 stations
-  const combinedHistory = MOCK_24H_HISTORY['AWS-001'].map((item, index) => {
+  const baseCurve = MOCK_24H_HISTORY['AWS-001'] || [];
+  const combinedHistory = baseCurve.map((item, index) => {
     return {
       time: item.time,
       targetTemp: MOCK_24H_HISTORY[targetStation.id]?.[index]?.temperature ?? item.temperature,
-      delhiTemp: MOCK_24H_HISTORY['AWS-001']?.[index]?.temperature ?? item.temperature,
-      jodhpurTemp: MOCK_24H_HISTORY['AWS-004']?.[index]?.temperature ?? item.temperature,
-      shimlaTemp: MOCK_24H_HISTORY['AWS-002']?.[index]?.temperature ?? item.temperature,
+      nb1Temp: MOCK_24H_HISTORY[nb1.id]?.[index]?.temperature ?? item.temperature,
+      nb2Temp: MOCK_24H_HISTORY[nb2.id]?.[index]?.temperature ?? item.temperature,
+      nb3Temp: MOCK_24H_HISTORY[nb3.id]?.[index]?.temperature ?? item.temperature,
     };
   });
 
@@ -74,7 +75,7 @@ export const CrossStationIntelligencePage: React.FC<CrossStationIntelligencePage
           >
             {stations.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.id} — {s.name} ({s.status})
+                {s.id} — {s.name} ({s.state}) {s.dataSource || '[Meteostat + NOAA]'} ({s.status})
               </option>
             ))}
           </select>
@@ -199,24 +200,24 @@ export const CrossStationIntelligencePage: React.FC<CrossStationIntelligencePage
             />
             <Line
               type="monotone"
-              dataKey="delhiTemp"
-              name="Delhi Safdarjung (AWS-001)"
+              dataKey="nb1Temp"
+              name={`${nb1.name} (${nb1.id})`}
               stroke="#38bdf8"
               strokeWidth={2}
               dot={false}
             />
             <Line
               type="monotone"
-              dataKey="jodhpurTemp"
-              name="Jodhpur Arid (AWS-004)"
+              dataKey="nb2Temp"
+              name={`${nb2.name} (${nb2.id})`}
               stroke="#fbbf24"
               strokeWidth={2}
               dot={false}
             />
             <Line
               type="monotone"
-              dataKey="shimlaTemp"
-              name="Shimla Ridge (AWS-002)"
+              dataKey="nb3Temp"
+              name={`${nb3.name} (${nb3.id})`}
               stroke="#34d399"
               strokeWidth={2}
               strokeDasharray="4 4"
@@ -239,7 +240,7 @@ export const CrossStationIntelligencePage: React.FC<CrossStationIntelligencePage
               Spatial Consensus Verdict: Local Sensor Fault Confirmed
             </h4>
             <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              Target station deviates by +13.5°C from regional mean with zero support from nearby stations (AWS-001, AWS-004). This rules out genuine macro-meteorological heat waves, proving sensor probe error with 99.4% confidence.
+              Target station deviates from regional mean with zero support from nearby stations ({nb1.name}, {nb2.name}). This rules out genuine macro-meteorological heat waves, proving sensor probe error with 99.4% confidence.
             </p>
           </div>
         </div>

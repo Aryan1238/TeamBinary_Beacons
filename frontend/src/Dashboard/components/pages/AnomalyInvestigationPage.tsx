@@ -149,16 +149,16 @@ export const AnomalyInvestigationPage: React.FC<AnomalyInvestigationPageProps> =
 
           <div className="mt-4 p-3 rounded-xl bg-[#0a101f]/80 border border-slate-800/70 text-xs font-mono">
             <div className="flex justify-between text-slate-400 py-1 border-b border-slate-800/60">
-              <span>AWS-001 (Delhi):</span>
-              <span className="text-emerald-400 font-semibold">33.2°C (Normal)</span>
+              <span>AWS-004 (Mumbai):</span>
+              <span className="text-emerald-400 font-semibold">30.5°C (Normal)</span>
             </div>
             <div className="flex justify-between text-slate-400 py-1 border-b border-slate-800/60">
-              <span>AWS-004 (Jodhpur):</span>
-              <span className="text-emerald-400 font-semibold">35.1°C (Normal)</span>
+              <span>AWS-006 (Ahmedabad):</span>
+              <span className="text-emerald-400 font-semibold">33.5°C (Normal)</span>
             </div>
             <div className="flex justify-between text-rose-400 py-1 font-bold">
-              <span>AWS-003 (Target):</span>
-              <span>48.6°C (Delta +13.5°C)</span>
+              <span>AWS-003 (Pune - Target):</span>
+              <span>48.6°C (Delta +13.8°C)</span>
             </div>
           </div>
         </div>

@@ -238,11 +238,14 @@ export const StationMapPage: React.FC<StationMapPageProps> = ({
 
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
-              <div>
-                <span className="font-mono text-xs text-sky-400 font-bold">{selectedStation.id}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-sky-400 font-bold">{selectedStation.id}</span>
+                  <span className="text-[10px] font-mono font-semibold text-sky-300 px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-500/30">
+                    {selectedStation.dataSource || '[Meteostat + NOAA]'}
+                  </span>
+                </div>
                 <h3 className="text-lg font-bold text-white">{selectedStation.name}</h3>
                 <p className="text-xs text-slate-400">{selectedStation.location}, {selectedStation.state}</p>
-              </div>
               <StatusBadge status={selectedStation.status} />
             </div>
 

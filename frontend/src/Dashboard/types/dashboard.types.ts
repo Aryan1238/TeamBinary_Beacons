@@ -26,6 +26,9 @@ export interface AWSStation {
     lat: number;
     lng: number;
   };
+  dataSource?: string;
+  meteostatId?: string;
+  noaaId?: string;
   status: StationStatus;
   healthScore: number;
   lastPingSeconds: number;

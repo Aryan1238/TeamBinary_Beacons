@@ -53,20 +53,20 @@ export const SensorHealthPage: React.FC<SensorHealthPageProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl">
           <span className="text-xs text-slate-400 font-mono font-medium block">Total Active Sensors</span>
-          <div className="text-2xl font-black font-mono text-white mt-1">60 Probes</div>
-          <span className="text-[10px] text-slate-400 font-mono">5 sensors × 12 stations</span>
+          <div className="text-2xl font-black font-mono text-white mt-1">35 Probes</div>
+          <span className="text-[10px] text-slate-400 font-mono">5 sensors × 7 stations</span>
         </div>
 
         <div className="p-5 rounded-2xl bg-gradient-to-b from-[#231b12]/80 via-[#161324]/80 to-[#090e1c]/95 border border-amber-500/35 backdrop-blur-md shadow-xl">
           <span className="text-xs text-amber-300 font-mono font-medium block">Calibration Due (&lt;30d)</span>
-          <div className="text-2xl font-black font-mono text-amber-400 mt-1">3 Stations</div>
+          <div className="text-2xl font-black font-mono text-amber-400 mt-1">2 Stations</div>
           <span className="text-[10px] text-amber-400/80 font-mono">Scheduled recertification</span>
         </div>
 
         <div className="p-5 rounded-2xl bg-gradient-to-b from-[#24131b]/80 via-[#161224]/80 to-[#090e1c]/95 border border-rose-500/35 backdrop-blur-md shadow-xl">
           <span className="text-xs text-rose-300 font-mono font-medium block">Degraded / Faulty Probes</span>
           <div className="text-2xl font-black font-mono text-rose-400 mt-1">2 Probes</div>
-          <span className="text-[10px] text-rose-400/80 font-mono">AWS-003 Temp & AWS-008 Wind</span>
+          <span className="text-[10px] text-rose-400/80 font-mono">AWS-003 Temp & AWS-007 Pressure</span>
         </div>
 
         <div className="p-5 rounded-2xl bg-gradient-to-b from-[#102422]/80 via-[#0e172a]/85 to-[#090e1c]/95 border border-emerald-500/30 backdrop-blur-md shadow-xl">
@@ -123,7 +123,9 @@ export const SensorHealthPage: React.FC<SensorHealthPageProps> = ({
                 <tr key={station.id} className="hover:bg-slate-800/40 text-slate-300 transition-colors">
                   <td className="py-3 px-3">
                     <div className="font-bold text-white font-sans">{station.name}</div>
-                    <div className="text-[10px] text-slate-400">{station.id} • {station.state}</div>
+                    <div className="text-[10px] text-slate-400">
+                      {station.id} • {station.state} <span className="text-sky-400 font-semibold">{station.dataSource || '[Meteostat + NOAA]'}</span>
+                    </div>
                   </td>
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-1.5">

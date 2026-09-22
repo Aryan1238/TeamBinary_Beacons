@@ -163,7 +163,9 @@ export const CommandOverviewPage: React.FC<CommandOverviewPageProps> = ({
                   </div>
                   <div className="mt-2">
                     <div className="font-semibold text-xs text-white truncate">{s.name}</div>
-                    <div className="text-[10px] text-slate-400 truncate">{s.location}</div>
+                    <div className="text-[10px] text-slate-400 truncate">
+                      {s.location}, {s.state} • <span className="text-sky-400 font-semibold">{s.dataSource || '[Meteostat + NOAA]'}</span>
+                    </div>
                   </div>
                   <div className="mt-2 text-[10px] font-mono flex items-center justify-between text-slate-300">
                     <span className="font-bold">{s.sensors.temperature.value}°C</span>

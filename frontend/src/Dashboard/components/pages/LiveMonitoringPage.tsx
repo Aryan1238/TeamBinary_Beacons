@@ -124,12 +124,16 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
           >
             {stations.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.id} — {s.name} ({s.state})
+                {s.id} — {s.name} ({s.state}) {s.dataSource || '[Meteostat + NOAA]'}
               </option>
             ))}
           </select>
 
           <StatusBadge status={currentStation.status} />
+
+          <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/40">
+            {currentStation.dataSource || '[Meteostat + NOAA]'}
+          </span>
 
           {/* Dynamic Live Status Indicator */}
           {simulationStatus === 'RUNNING' && (
