@@ -1,15 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Sun,
   CloudRain,
   CloudSun,
   Wind,
   Droplets,
-  Eye,
-  Compass,
   Gauge,
   Calendar,
   CloudLightning,
+  CloudFog,
+  Snowflake,
+  RefreshCw,
+  AlertTriangle,
+  Radio,
+  Satellite,
+  Compass,
+  CheckCircle2,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -23,45 +32,164 @@ import {
 import { PageHeader } from '../common/PageHeader';
 import { ChartWrapper } from '../common/ChartWrapper';
 import type { AWSStation } from '../../types/dashboard.types';
-import { MOCK_24H_HISTORY } from '../../data/mockStations';
+import {
+  fetchLiveWeather,
+  LiveWeatherData,
+} from '../../services/weatherService';
 
 interface LiveWeatherPageProps {
   stations: AWSStation[];
+  selectedStationId?: string;
+  onSelectStation?: (stationId: string) => void;
 }
 
-export const LiveWeatherPage: React.FC<LiveWeatherPageProps> = ({ stations }) => {
-  const [selectedStationId, setSelectedStationId] = useState<string>(stations[0]?.id || 'AWS-001');
+export const LiveWeatherPage: React.FC<LiveWeatherPageProps> = ({
+  stations,
+  selectedStationId: externalSelectedStationId,
+  onSelectStation,
+}) => {
+  // Local station selection state fallback if not controlled externally
+  const [internalStationId, setInternalStationId] = useState<string>(
+    externalSelectedStationId || stations[0]?.id || 'AWS-001'
+  );
 
-  const selectedStation = stations.find((s) => s.id === selectedStationId) || stations[0];
-  const historyData = MOCK_24H_HISTORY[selectedStation.id] || MOCK_24H_HISTORY['AWS-001'];
+  const activeStationId = externalSelectedStationId || internalStationId;
+  const currentStation =
+    stations.find((s) => s.id === activeStationId) || stations[0];
 
-  // Weather icon mapping
-  const getWeatherIcon = (cond: string) => {
-    const c = cond.toLowerCase();
-    if (c.includes('rain') || c.includes('shower')) return <CloudRain className="w-10 h-10 text-sky-400 drop-shadow-[0_0_12px_rgba(56,189,248,0.4)]" />;
-    if (c.includes('storm')) return <CloudLightning className="w-10 h-10 text-indigo-400 drop-shadow-[0_0_12px_rgba(129,140,248,0.4)]" />;
-    if (c.includes('clear') || c.includes('sunny')) return <Sun className="w-10 h-10 text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.4)]" />;
-    return <CloudSun className="w-10 h-10 text-sky-300 drop-shadow-[0_0_12px_rgba(56,189,248,0.3)]" />;
+  const [weatherData, setWeatherData] = useState<LiveWeatherData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleStationChange = (newStationId: string) => {
+    setInternalStationId(newStationId);
+    if (onSelectStation) {
+      onSelectStation(newStationId);
+    }
   };
+
+  /**
+   * Fetches real live weather data from Open-Meteo for the current station
+   */
+  const loadWeatherData = useCallback(
+    async (isManualRefresh = false) => {
+      if (!currentStation || !currentStation.coordinates) {
+        setError('Station coordinates are missing or invalid.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Cancel previous pending request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      if (isManualRefresh) {
+        setIsRefreshing(true);
+      } else {
+        // Clear stale data immediately upon station switch as requested
+        setWeatherData(null);
+        setIsLoading(true);
+      }
+      setError(null);
+
+      try {
+        const { lat, lng } = currentStation.coordinates;
+        const data = await fetchLiveWeather(lat, lng, controller.signal);
+        setWeatherData(data);
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return; // Request was aborted due to station change
+        }
+        const errorMsg =
+          err instanceof Error
+            ? err.message
+            : 'Unable to reach external meteorological server. Check network connection.';
+        setError(errorMsg);
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [currentStation]
+  );
+
+  // Automatically fetch weather when the selected station changes
+  useEffect(() => {
+    loadWeatherData();
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [loadWeatherData]);
+
+  /**
+   * Weather icon selector based on API category and condition
+   */
+  const renderWeatherIcon = (category?: string) => {
+    switch (category) {
+      case 'clear':
+        return <Sun className="w-10 h-10 text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.4)] animate-pulse" />;
+      case 'rain':
+        return <CloudRain className="w-10 h-10 text-sky-400 drop-shadow-[0_0_12px_rgba(56,189,248,0.4)]" />;
+      case 'storm':
+        return <CloudLightning className="w-10 h-10 text-indigo-400 drop-shadow-[0_0_12px_rgba(129,140,248,0.4)]" />;
+      case 'snow':
+        return <Snowflake className="w-10 h-10 text-sky-200 drop-shadow-[0_0_12px_rgba(186,230,253,0.4)]" />;
+      case 'fog':
+        return <CloudFog className="w-10 h-10 text-slate-300 drop-shadow-[0_0_12px_rgba(148,163,184,0.4)]" />;
+      case 'clouds':
+      default:
+        return <CloudSun className="w-10 h-10 text-sky-300 drop-shadow-[0_0_12px_rgba(56,189,248,0.3)]" />;
+    }
+  };
+
+  // Sensor vs External Weather Comparison Deltas
+  const tempDelta =
+    weatherData && currentStation
+      ? Math.round((currentStation.sensors.temperature.value - weatherData.temperature) * 10) / 10
+      : null;
+
+  const humDelta =
+    weatherData && currentStation
+      ? Math.round(currentStation.sensors.humidity.value - weatherData.humidity)
+      : null;
+
+  const pressDelta =
+    weatherData && currentStation
+      ? Math.round((currentStation.sensors.pressure.value - weatherData.pressure) * 10) / 10
+      : null;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Live Weather Feed & Synoptic Observations"
-        subtitle="Current surface conditions, atmospheric moisture, dew points, and diurnal projections."
-        badge="METEOROLOGICAL TELEMETRY"
+        subtitle={`Real-time atmospheric observations queried directly from Open-Meteo Synoptic Grid for ${currentStation.name}.`}
+        badge="LIVE EXTERNAL METEOROLOGICAL API"
       />
 
-      {/* Station Selector Bar */}
+      {/* Station Selector Bar & API Synchronizer */}
       <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-center gap-3">
-          <label htmlFor="weather-station-select" className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono">
+        <div className="flex flex-wrap items-center gap-3">
+          <label
+            htmlFor="weather-station-select"
+            className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono flex items-center gap-1.5"
+          >
+            <Radio className="w-3.5 h-3.5 text-sky-400" />
             Observatory Station:
           </label>
           <select
             id="weather-station-select"
-            value={selectedStation.id}
-            onChange={(e) => setSelectedStationId(e.target.value)}
+            value={currentStation.id}
+            onChange={(e) => handleStationChange(e.target.value)}
             className="px-3 py-1.5 rounded-xl bg-[#090e1c] border border-slate-700 text-sm font-semibold text-white focus:outline-none focus:border-sky-500"
           >
             {stations.map((s) => (
@@ -70,181 +198,469 @@ export const LiveWeatherPage: React.FC<LiveWeatherPageProps> = ({ stations }) =>
               </option>
             ))}
           </select>
+
+          <span className="text-xs text-slate-400 font-mono hidden md:inline">
+            Lat {currentStation.coordinates.lat.toFixed(3)}°N, Lng{' '}
+            {currentStation.coordinates.lng.toFixed(3)}°E • Elev{' '}
+            {currentStation.elevationMeters}m
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
-          <span>Region: <strong className="text-sky-300">{selectedStation.region}</strong></span>
-          <span>•</span>
-          <span>Elevation: <strong className="text-slate-200">{selectedStation.elevationMeters}m</strong></span>
+        <div className="flex items-center gap-2.5 self-end sm:self-center">
+          <button
+            onClick={() => loadWeatherData(true)}
+            disabled={isLoading || isRefreshing}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white bg-slate-900/80 hover:bg-sky-500/15 border border-slate-800 hover:border-sky-500/40 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+            title="Refresh current weather data from external API"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 text-sky-400 ${
+                isRefreshing || isLoading ? 'animate-spin' : ''
+              }`}
+            />
+            <span>{isRefreshing ? 'Fetching API...' : 'Refresh Feed'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Synoptic Weather Main Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-gradient-to-br from-[#121c38]/90 via-[#0e162b]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-2xl relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/20 to-transparent" />
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 font-mono">
-                Current Surface Observation
-              </span>
-              <h2 className="text-2xl font-bold text-white mt-1 tracking-tight">
-                {selectedStation.name}
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">{selectedStation.location}, {selectedStation.state} • India</p>
-            </div>
-
-            <div className="flex items-center gap-4 bg-[#0a101f]/80 p-3.5 rounded-2xl border border-slate-800/80 backdrop-blur-md">
-              {getWeatherIcon(selectedStation.weatherCondition)}
-              <div className="text-right">
-                <div className="text-3xl font-black font-mono text-white">
-                  {selectedStation.sensors.temperature.value}°C
+      {/* ERROR STATE */}
+      {error && !isLoading && (
+        <div className="p-6 rounded-2xl bg-gradient-to-r from-rose-950/30 via-[#1a1224]/80 to-[#0c1020]/90 border border-rose-500/40 backdrop-blur-md shadow-xl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-bold text-white tracking-wide">
+                  Live Weather Feed Temporarily Unavailable
+                </h4>
+                <p className="text-xs text-slate-300 mt-1">
+                  Could not retrieve external observations for {currentStation.name} ({currentStation.coordinates.lat}°N, {currentStation.coordinates.lng}°E).
+                </p>
+                <div className="mt-2 text-[11px] font-mono text-rose-300 bg-rose-950/40 px-3 py-1.5 rounded-lg border border-rose-500/30 inline-block">
+                  Error Detail: {error}
                 </div>
-                <div className="text-xs text-slate-400 capitalize">{selectedStation.weatherCondition}</div>
               </div>
             </div>
-          </div>
-
-          <p className="text-xs text-slate-300 mt-4 bg-[#0a101f]/60 p-3.5 rounded-xl border border-slate-800/60">
-            <strong className="text-sky-300">Forecast Summary: </strong> {selectedStation.forecastSummary}
-          </p>
-
-          {/* Meteorological Parameter Tiles with Distinct Accents */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-            <div className="p-3.5 rounded-xl bg-gradient-to-b from-sky-950/20 to-[#0a101f]/60 border border-sky-500/20">
-              <div className="flex items-center gap-1.5 text-slate-300 text-xs mb-1">
-                <Droplets className="w-3.5 h-3.5 text-sky-400" />
-                <span>Humidity</span>
-              </div>
-              <div className="text-xl font-bold font-mono text-white">
-                {selectedStation.sensors.humidity.value}%
-              </div>
-              <div className="text-[10px] text-slate-400 font-mono">Dew Point: ~19°C</div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-gradient-to-b from-indigo-950/20 to-[#0a101f]/60 border border-indigo-500/20">
-              <div className="flex items-center gap-1.5 text-slate-300 text-xs mb-1">
-                <Gauge className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Pressure</span>
-              </div>
-              <div className="text-xl font-bold font-mono text-white">
-                {selectedStation.sensors.pressure.value}
-              </div>
-              <div className="text-[10px] text-slate-400 font-mono">hPa (QNH Baro)</div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-gradient-to-b from-emerald-950/20 to-[#0a101f]/60 border border-emerald-500/20">
-              <div className="flex items-center gap-1.5 text-slate-300 text-xs mb-1">
-                <Wind className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Wind Speed</span>
-              </div>
-              <div className="text-xl font-bold font-mono text-white">
-                {selectedStation.sensors.wind.value} km/h
-              </div>
-              <div className="text-[10px] text-slate-400 font-mono">Gusts to 22 km/h</div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-gradient-to-b from-blue-950/20 to-[#0a101f]/60 border border-blue-500/20">
-              <div className="flex items-center gap-1.5 text-slate-300 text-xs mb-1">
-                <CloudRain className="w-3.5 h-3.5 text-blue-400" />
-                <span>Rain (24h)</span>
-              </div>
-              <div className="text-xl font-bold font-mono text-white">
-                {selectedStation.sensors.rainfall.value} mm
-              </div>
-              <div className="text-[10px] text-slate-400 font-mono">Tipping gauge</div>
-            </div>
+            <button
+              onClick={() => loadWeatherData(false)}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-md transition-all shrink-0 cursor-pointer active:scale-95"
+            >
+              Retry Live API Connection
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Micro-Climate & Optics Metrics */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-400/20 to-transparent" />
-
-          <h3 className="font-bold text-white text-sm flex items-center gap-2 tracking-tight">
-            <Compass className="w-4 h-4 text-sky-400" />
-            <span>Atmospheric Indicators</span>
-          </h3>
-
-          <div className="space-y-3 my-3">
-            <div className="p-3 rounded-xl bg-[#0a101f]/70 border border-slate-800/70 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Eye className="w-4 h-4 text-slate-400" />
-                <span className="text-xs text-slate-300">Surface Visibility</span>
-              </div>
-              <span className="font-mono text-xs font-bold text-white">8.5 km</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-[#0a101f]/70 border border-slate-800/70 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sun className="w-4 h-4 text-amber-400" />
-                <span className="text-xs text-slate-300">Solar Radiance (GHI)</span>
-              </div>
-              <span className="font-mono text-xs font-bold text-amber-300">680 W/m²</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-[#0a101f]/70 border border-slate-800/70 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-indigo-400" />
-                <span className="text-xs text-slate-300">Observation Cycle</span>
-              </div>
-              <span className="font-mono text-xs font-bold text-slate-300">SYNOP 3-Hourly</span>
-            </div>
+      {/* LOADING STATE */}
+      {isLoading && !weatherData && !error && (
+        <div className="p-10 rounded-2xl bg-gradient-to-br from-[#121c38]/70 via-[#0e162b]/65 to-[#090e1c]/80 border border-slate-800/80 backdrop-blur-md shadow-xl flex flex-col items-center justify-center text-center space-y-4">
+          <div className="relative flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full border-2 border-sky-500/30 border-t-sky-400 animate-spin" />
+            <Satellite className="w-6 h-6 text-sky-400 absolute" />
           </div>
-
-          <div className="p-3.5 rounded-xl bg-gradient-to-r from-sky-950/30 via-indigo-950/20 to-transparent border border-sky-500/30 text-xs text-sky-300">
-            <span className="font-bold block mb-0.5">Automated Synoptic Status</span>
-            Sensors operating within regional normal dispersion brackets.
+          <div>
+            <h4 className="text-sm font-bold text-white tracking-wide">
+              Querying Open-Meteo Synoptic Grid
+            </h4>
+            <p className="text-xs text-slate-400 mt-1 font-mono">
+              Retrieving live atmospheric surface observations for {currentStation.name} (Lat {currentStation.coordinates.lat}°N, Lng {currentStation.coordinates.lng}°E)...
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 bg-slate-900/60 px-3 py-1 rounded-full border border-slate-800">
+            <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
+            <span>Open Access WMO Forecast Endpoint</span>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* 24-Hour Temperature Forecast vs Actual */}
-      <ChartWrapper
-        title="24-Hour Atmospheric Trajectory (Temperature & Humidity)"
-        subtitle="Harmonic diurnal cycle comparison for the selected station."
-        badge="HARMONIC CURVE"
-        height={300}
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={historyData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1c253d" />
-            <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
-            <YAxis yAxisId="temp" stroke="#f59e0b" fontSize={11} tickLine={false} unit="°C" />
-            <YAxis yAxisId="hum" orientation="right" stroke="#38bdf8" fontSize={11} tickLine={false} unit="%" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#0c1326',
-                borderColor: '#334155',
-                borderRadius: '0.75rem',
-                color: '#f8fafc',
-                fontSize: '12px',
-                boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
-              }}
-            />
-            <Line
-              yAxisId="temp"
-              type="monotone"
-              dataKey="temperature"
-              stroke="#f59e0b"
-              strokeWidth={2.5}
-              dot={false}
-              name="Temperature (°C)"
-            />
-            <Line
-              yAxisId="hum"
-              type="monotone"
-              dataKey="humidity"
-              stroke="#38bdf8"
-              strokeWidth={2}
-              strokeDasharray="4 4"
-              dot={false}
-              name="Humidity (%)"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </ChartWrapper>
+      {/* LIVE WEATHER CONTENT */}
+      {weatherData && (
+        <>
+          {/* Synoptic Weather Main Card & Indicators */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 p-6 rounded-2xl bg-gradient-to-br from-[#121c38]/90 via-[#0e162b]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-2xl relative overflow-hidden flex flex-col justify-between">
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/25 to-transparent" />
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 font-mono">
+                      Live Surface Observation
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      LIVE API
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mt-1 tracking-tight">
+                    {currentStation.name}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {currentStation.location}, {currentStation.state} • Lat{' '}
+                    {currentStation.coordinates.lat.toFixed(3)}°N, Lng{' '}
+                    {currentStation.coordinates.lng.toFixed(3)}°E
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4 bg-[#0a101f]/85 p-3.5 rounded-2xl border border-slate-800/80 backdrop-blur-md shadow-inner">
+                  {renderWeatherIcon(weatherData.weatherCategory)}
+                  <div className="text-right">
+                    <div className="text-3xl font-black font-mono text-white">
+                      {weatherData.temperature}°C
+                    </div>
+                    <div className="text-xs text-slate-400 capitalize font-medium">
+                      {weatherData.weatherCondition}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      Feels like {weatherData.apparentTemperature}°C
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* API Metadata & Station Elevation */}
+              <div className="mt-4 p-3 rounded-xl bg-[#0a101f]/60 border border-slate-800/60 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300 font-mono">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-sky-400" />
+                  <span>
+                    API Observation Time:{' '}
+                    <strong className="text-white">{weatherData.timestamp}</strong>
+                  </span>
+                </div>
+                <span className="text-slate-400 hidden sm:inline">•</span>
+                <span className="text-[11px] text-slate-400">
+                  Source: <strong className="text-sky-300">{weatherData.source}</strong>
+                </span>
+              </div>
+
+              {/* Four Primary Weather Tiles */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+                {/* Humidity */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-b from-sky-950/25 to-[#0a101f]/70 border border-sky-500/25">
+                  <div className="flex items-center gap-1.5 text-slate-300 text-xs mb-1">
+                    <Droplets className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Humidity</span>
+                  </div>
+                  <div className="text-xl font-bold font-mono text-white">
+                    {weatherData.humidity}%
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    Dew Point: ~{Math.round(weatherData.temperature - (100 - weatherData.humidity) / 5)}°C
+                  </div>
+                </div>
+
+                {/* Pressure */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-b from-indigo-950/25 to-[#0a101f]/70 border border-indigo-500/25">
+                  <div className="flex items-center gap-1.5 text-slate-300 text-xs mb-1">
+                    <Gauge className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Pressure</span>
+                  </div>
+                  <div className="text-xl font-bold font-mono text-white">
+                    {weatherData.pressure}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">hPa (Surface QNH)</div>
+                </div>
+
+                {/* Wind Speed & Direction */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-b from-emerald-950/25 to-[#0a101f]/70 border border-emerald-500/25">
+                  <div className="flex items-center gap-1.5 text-slate-300 text-xs mb-1">
+                    <Wind className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Wind Velocity</span>
+                  </div>
+                  <div className="text-xl font-bold font-mono text-white">
+                    {weatherData.windSpeed} km/h
+                  </div>
+                  <div className="text-[10px] text-emerald-300/80 font-mono flex items-center gap-1">
+                    <Compass className="w-3 h-3" />
+                    <span>
+                      {weatherData.windDirection}° ({weatherData.windCompass})
+                    </span>
+                  </div>
+                </div>
+
+                {/* Rainfall / Precipitation */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-b from-blue-950/25 to-[#0a101f]/70 border border-blue-500/25">
+                  <div className="flex items-center gap-1.5 text-slate-300 text-xs mb-1">
+                    <CloudRain className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Precipitation</span>
+                  </div>
+                  <div className="text-xl font-bold font-mono text-white">
+                    {weatherData.precipitation} mm
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    {weatherData.precipitation > 0 ? 'Active Precipitation' : 'Zero Rain Ingest'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Atmospheric Indicators & Synoptic Status */}
+            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-400/20 to-transparent" />
+
+              <h3 className="font-bold text-white text-sm flex items-center gap-2 tracking-tight">
+                <Compass className="w-4 h-4 text-sky-400" />
+                <span>Atmospheric Parameters</span>
+              </h3>
+
+              <div className="space-y-3 my-3">
+                <div className="p-3 rounded-xl bg-[#0a101f]/70 border border-slate-800/70 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sun className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs text-slate-300">WMO Weather Code</span>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-amber-300">
+                    WW-{weatherData.weatherCode}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-[#0a101f]/70 border border-slate-800/70 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wind className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs text-slate-300">Wind Direction</span>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-emerald-300">
+                    {weatherData.windCompass} ({weatherData.windDirection}°)
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-[#0a101f]/70 border border-slate-800/70 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs text-slate-300">Reporting Zone</span>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-slate-300">
+                    {weatherData.timezone}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-sky-950/30 via-indigo-950/20 to-transparent border border-sky-500/30 text-xs text-sky-300">
+                <span className="font-bold block mb-0.5 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  Live Synoptic Feed Verified
+                </span>
+                External weather values retrieved directly from open satellite and meteorological reanalysis grids.
+              </div>
+            </div>
+          </div>
+
+          {/* SIDE-BY-SIDE: Station Telemetry vs. External Weather API Comparison */}
+          <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-sky-400" />
+                  <span>Side-by-Side Comparison: AWS Sensor Telemetry vs. External Live Weather</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Direct ground-truth cross-referencing between onboard telemetry probe streams and independent external weather observations for {currentStation.name}.
+                </p>
+              </div>
+              <div className="text-[11px] font-mono text-slate-400">
+                Cross-Verification Grid
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Temperature Comparison */}
+              <div className="p-4 rounded-xl bg-[#090e1c]/80 border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-medium">Temperature</span>
+                  {tempDelta !== null && (
+                    <span
+                      className={`text-[10px] font-mono font-bold flex items-center gap-0.5 ${
+                        Math.abs(tempDelta) > 3.0
+                          ? 'text-rose-400'
+                          : Math.abs(tempDelta) > 1.5
+                          ? 'text-amber-400'
+                          : 'text-emerald-400'
+                      }`}
+                    >
+                      {tempDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                      Δ {Math.abs(tempDelta)}°C
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center pt-1">
+                  <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-mono">AWS Sensor</span>
+                    <span className="text-base font-bold font-mono text-amber-300">
+                      {currentStation.sensors.temperature.value}°C
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-mono">External API</span>
+                    <span className="text-base font-bold font-mono text-sky-300">
+                      {weatherData.temperature}°C
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Humidity Comparison */}
+              <div className="p-4 rounded-xl bg-[#090e1c]/80 border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-medium">Humidity</span>
+                  {humDelta !== null && (
+                    <span
+                      className={`text-[10px] font-mono font-bold flex items-center gap-0.5 ${
+                        Math.abs(humDelta) > 15
+                          ? 'text-rose-400'
+                          : Math.abs(humDelta) > 8
+                          ? 'text-amber-400'
+                          : 'text-emerald-400'
+                      }`}
+                    >
+                      {humDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                      Δ {Math.abs(humDelta)}%
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center pt-1">
+                  <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-mono">AWS Sensor</span>
+                    <span className="text-base font-bold font-mono text-sky-300">
+                      {currentStation.sensors.humidity.value}%
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-mono">External API</span>
+                    <span className="text-base font-bold font-mono text-sky-300">
+                      {weatherData.humidity}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pressure Comparison */}
+              <div className="p-4 rounded-xl bg-[#090e1c]/80 border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-medium">Pressure</span>
+                  {pressDelta !== null && (
+                    <span
+                      className={`text-[10px] font-mono font-bold flex items-center gap-0.5 ${
+                        Math.abs(pressDelta) > 10
+                          ? 'text-rose-400'
+                          : 'text-emerald-400'
+                      }`}
+                    >
+                      {pressDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                      Δ {Math.abs(pressDelta)} hPa
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center pt-1">
+                  <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-mono">AWS Sensor</span>
+                    <span className="text-base font-bold font-mono text-indigo-300">
+                      {currentStation.sensors.pressure.value}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-mono">External API</span>
+                    <span className="text-base font-bold font-mono text-indigo-300">
+                      {weatherData.pressure}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rain Comparison */}
+              <div className="p-4 rounded-xl bg-[#090e1c]/80 border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-medium">Precipitation</span>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                    Independent Sensor
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center pt-1">
+                  <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-mono">AWS Sensor</span>
+                    <span className="text-base font-bold font-mono text-blue-300">
+                      {currentStation.sensors.rainfall.value} mm
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-mono">External API</span>
+                    <span className="text-base font-bold font-mono text-blue-300">
+                      {weatherData.precipitation} mm
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 24-Hour Diurnal Trajectory Chart from Real Weather API */}
+          {weatherData.hourlyForecast && weatherData.hourlyForecast.length > 0 && (
+            <ChartWrapper
+              title="24-Hour API Diurnal Trajectory (Temperature & Humidity)"
+              subtitle={`Live meteorological trajectory computed from Open-Meteo hourly synoptic model for ${currentStation.name}.`}
+              badge="EXTERNAL HOURLY FORECAST"
+              height={300}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={weatherData.hourlyForecast}
+                  margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1c253d" />
+                  <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
+                  <YAxis
+                    yAxisId="temp"
+                    stroke="#f59e0b"
+                    fontSize={11}
+                    tickLine={false}
+                    unit="°C"
+                    domain={['auto', 'auto']}
+                  />
+                  <YAxis
+                    yAxisId="hum"
+                    orientation="right"
+                    stroke="#38bdf8"
+                    fontSize={11}
+                    tickLine={false}
+                    unit="%"
+                    domain={[0, 100]}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0c1326',
+                      borderColor: '#334155',
+                      borderRadius: '0.75rem',
+                      color: '#f8fafc',
+                      fontSize: '12px',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+                    }}
+                  />
+                  <Line
+                    yAxisId="temp"
+                    type="monotone"
+                    dataKey="temperature"
+                    stroke="#f59e0b"
+                    strokeWidth={2.5}
+                    dot={false}
+                    name="API Temp (°C)"
+                  />
+                  <Line
+                    yAxisId="hum"
+                    type="monotone"
+                    dataKey="humidity"
+                    stroke="#38bdf8"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    name="API Humidity (%)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartWrapper>
+          )}
+        </>
+      )}
     </div>
   );
 };
+
+export default LiveWeatherPage;

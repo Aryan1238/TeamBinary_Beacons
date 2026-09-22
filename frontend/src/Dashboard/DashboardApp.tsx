@@ -69,7 +69,11 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
       )}
 
       {activeTab === 'live-weather' && (
-        <LiveWeatherPage stations={stations} />
+        <LiveWeatherPage
+          stations={stations}
+          selectedStationId={selectedStationId}
+          onSelectStation={handleSelectStation}
+        />
       )}
 
       {activeTab === 'station-map' && (
