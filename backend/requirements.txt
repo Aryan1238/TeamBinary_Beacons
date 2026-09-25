@@ -7,3 +7,5 @@ scipy
 websockets
 python-multipart
 pydantic
+tensorflow-cpu
+keras
