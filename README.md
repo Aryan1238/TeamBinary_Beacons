@@ -6,11 +6,15 @@
 **Problem Statement ID:** 26073  
 **Event:** Smart India Hackathon (SIH)  
 
-[![Deploy Frontend to GitHub Pages](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml)
+[![Deploy Frontend to GitHub Pages](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml)  
+The application is fully functional end-to-end (frontend + backend live).
 
 ---
 
 ## 🌐 Live Demo
+
+[![Deploy Frontend to GitHub Pages](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml)  
+The application is fully functional end-to-end (frontend + backend live).
 
 Explore the live deployed frontend application on GitHub Pages:  
 👉 **[https://aryan1238.github.io/TeamBinary_Beacons/](https://aryan1238.github.io/TeamBinary_Beacons/)**
