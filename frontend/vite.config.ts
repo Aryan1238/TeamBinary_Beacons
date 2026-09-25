@@ -23,3 +23,4 @@ export default defineConfig({
     },
   },
 })
+'/TeamBinary_Beacons/',
