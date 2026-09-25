@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { CommandOverviewPage } from './components/pages/CommandOverviewPage';
 import { LiveMonitoringPage } from './components/pages/LiveMonitoringPage';
@@ -13,9 +13,9 @@ import { SensorHealthPage } from './components/pages/SensorHealthPage';
 import { ResponseMaintenancePage } from './components/pages/ResponseMaintenancePage';
 import { SimulationLabPage } from './components/pages/SimulationLabPage';
 
-import { MOCK_ANOMALIES } from './data/mockStations';
 import type { DashboardTab, AnomalyAlert } from './types/dashboard.types';
 import { TelemetryProvider, useTelemetry } from './context/TelemetryContext';
+import { investigationToAlert } from './utils/investigationUtils';
 
 interface DashboardAppProps {
   onNavigateHome?: () => void;
@@ -26,10 +26,47 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
     window.location.href = '/';
   },
 }) => {
-  const { stations, activeFaults } = useTelemetry();
-  const [activeTab, setActiveTab] = useState<DashboardTab>('command-center');
+  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') as DashboardTab;
+      if (tabParam) return tabParam;
+      const hash = window.location.hash.replace('#', '') as DashboardTab;
+      if (hash) return hash;
+    }
+    return 'command-center';
+  });
   const [selectedStationId, setSelectedStationId] = useState<string>('AWS-001');
-  const [selectedAlert, setSelectedAlert] = useState<AnomalyAlert>(MOCK_ANOMALIES[0]);
+  const [openTicketsCount, setOpenTicketsCount] = useState<number>(0);
+  const { stations, investigationsList } = useTelemetry();
+
+  const fetchTicketsCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/maintenance/tickets');
+      if (res.ok) {
+        const data = await res.json();
+        setOpenTicketsCount(data?.kpis?.open_tickets ?? 0);
+      }
+    } catch {
+      // fallback
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTicketsCount();
+    const interval = setInterval(fetchTicketsCount, 4000);
+    return () => clearInterval(interval);
+  }, [fetchTicketsCount]);
+
+  // Derive dynamic real anomaly alerts from active investigation records
+  const dynamicAlerts = useMemo(() => {
+    return investigationsList.map(investigationToAlert);
+  }, [investigationsList]);
+
+  const [selectedAlert, setSelectedAlert] = useState<AnomalyAlert | null>(null);
+
+  // Active alert to investigate: selected alert or first active investigation
+  const activeInvestigationAlert = selectedAlert || (dynamicAlerts.length > 0 ? dynamicAlerts[0] : null);
 
   const handleSelectStation = (stationId: string) => {
     setSelectedStationId(stationId);
@@ -47,12 +84,13 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
       stations={stations}
       onSelectStation={handleSelectStation}
       onNavigateHome={onNavigateHome}
-      activeAnomaliesCount={MOCK_ANOMALIES.length + Object.keys(activeFaults).length}
+      activeAnomaliesCount={dynamicAlerts.length}
+      openTicketsCount={openTicketsCount}
     >
       {activeTab === 'command-center' && (
         <CommandOverviewPage
           stations={stations}
-          anomalies={MOCK_ANOMALIES}
+          anomalies={dynamicAlerts}
           onSelectStation={handleSelectStation}
           onNavigateTab={setActiveTab}
           onInvestigateAlert={handleInvestigateAlert}
@@ -86,7 +124,7 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
 
       {activeTab === 'anomaly-alerts' && (
         <AnomalyAlertsPage
-          anomalies={MOCK_ANOMALIES}
+          anomalies={dynamicAlerts}
           onInvestigateAlert={handleInvestigateAlert}
           onNavigateTab={setActiveTab}
         />
@@ -94,7 +132,7 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
 
       {activeTab === 'anomaly-investigation' && (
         <AnomalyInvestigationPage
-          alert={selectedAlert}
+          alert={activeInvestigationAlert}
           onNavigateTab={setActiveTab}
         />
       )}
@@ -102,16 +140,18 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
       {activeTab === 'cross-station' && (
         <CrossStationIntelligencePage
           stations={stations}
+          selectedStationId={selectedStationId}
+          onSelectStation={handleSelectStation}
           onNavigateTab={setActiveTab}
         />
       )}
 
       {activeTab === 'historical-analysis' && (
-        <HistoricalAnalysisPage stations={stations} />
+        <HistoricalAnalysisPage stations={stations} onNavigateTab={setActiveTab} />
       )}
 
       {activeTab === 'weather-analytics' && (
-        <WeatherAnalyticsPage stations={stations} />
+        <WeatherAnalyticsPage stations={stations} onNavigateTab={setActiveTab} />
       )}
 
       {activeTab === 'sensor-health' && (
@@ -119,11 +159,15 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
           stations={stations}
           onSelectStation={handleSelectStation}
           onNavigateTab={setActiveTab}
+          onTicketCreated={fetchTicketsCount}
         />
       )}
 
       {activeTab === 'maintenance' && (
-        <ResponseMaintenancePage onNavigateTab={setActiveTab} />
+        <ResponseMaintenancePage
+          onNavigateTab={setActiveTab}
+          onTicketUpdated={fetchTicketsCount}
+        />
       )}
 
       {activeTab === 'simulation-lab' && <SimulationLabPage />}

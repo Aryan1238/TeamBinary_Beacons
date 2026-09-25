@@ -93,10 +93,10 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
       {/* Floating Trigger Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-[1500] flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs tracking-wider shadow-lg shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all"
+        className="fixed bottom-6 right-6 z-[1500] flex items-center gap-2 px-4 py-3 rounded-full bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs tracking-wider border border-sky-500 shadow-lg shadow-sky-600/30 hover:scale-105 active:scale-95 transition-all"
       >
         <Zap className="w-4 h-4 fill-white" />
-        <span>⚡ SIH DEMO SCENARIOS</span>
+        <span>⚡ DEMO SCENARIOS</span>
       </button>
 
       {/* Slide-in Demo Modal */}
@@ -106,15 +106,15 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
             {/* Header */}
             <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
-                  <Zap className="w-5 h-5 fill-amber-700" />
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-800">
+                  <Zap className="w-5 h-5 fill-blue-700" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                    SIH 2026 Judge Demonstration Suite
+                    Demonstration & Verification Suite
                   </h3>
                   <p className="text-xs text-slate-500 font-sans">
-                    Problem 26073 • One-Click Live Verification Scenarios
+                    Automated Meteorological Anomaly Verification Scenarios
                   </p>
                 </div>
               </div>
@@ -127,7 +127,7 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
             </div>
 
             {/* Notice regarding Demo Mode */}
-            <div className="mx-5 mt-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed font-sans">
+            <div className="mx-5 mt-4 p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 leading-relaxed font-sans">
               <strong>Notice for Evaluators:</strong> Triggering any scenario below activates <strong>Demo Mode</strong> to evaluate ML isolation on test excursions. Real live Open-Meteo observations can be restored at any time with the <strong>Return to Live Data</strong> button.
             </div>
 

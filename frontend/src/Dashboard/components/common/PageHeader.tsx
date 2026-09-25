@@ -21,17 +21,17 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   const displayBadge = badge || badgeText || 'SIMULATED DATA';
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-800/80 mb-6">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-200/90 mb-6">
       <div>
         <div className="flex items-center gap-2.5 mb-1.5">
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white font-sans">
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 font-sans">
             {title}
           </h1>
-          <span className="px-2.5 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/30 text-[10px] font-mono font-semibold tracking-wider">
+          <span className="px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-mono font-semibold tracking-wider">
             {displayBadge}
           </span>
         </div>
-        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-3xl">
           {displayDesc}
         </p>
       </div>

@@ -134,10 +134,10 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
 
     if (cond.includes('thunder') || [95, 96, 99].includes(code)) {
       return {
-        bg: 'from-slate-900 via-purple-950 to-slate-900 border-purple-800',
-        badge: 'bg-purple-100 text-purple-800 border-purple-300',
+        bg: 'from-slate-900 via-slate-950 to-slate-900 border-amber-800/60',
+        badge: 'bg-amber-950/40 text-amber-300 border-amber-700/40',
         icon: CloudLightning,
-        glow: 'text-purple-400'
+        glow: 'text-amber-400'
       };
     } else if (cond.includes('rain') || cond.includes('drizzle') || [51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) {
       return {
@@ -220,7 +220,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
       <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center gap-3 text-xs font-sans text-slate-600">
         <Info className="w-4 h-4 text-cyan-600 shrink-0" />
         <p className="leading-relaxed">
-          <strong className="text-slate-800 font-semibold">Live Weather Data — Open-Meteo API:</strong> Weather observations and forecasts are dynamically fetched from Open-Meteo. This prototype is an SIH meteorological surveillance demonstration and not an official IMD AWS operational feed.
+          <strong className="text-slate-800 font-semibold">Live Weather Data — Open-Meteo API:</strong> Weather observations and forecasts are dynamically fetched from Open-Meteo. This operational platform is a meteorological surveillance demonstration and not an official IMD AWS operational feed.
         </p>
       </div>
 
@@ -806,7 +806,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
         <div className="flex items-center gap-2 text-xs font-sans text-slate-600">
           <Sparkles className="w-4 h-4 text-cyan-600" />
           <span className="font-semibold text-slate-800">Quick Navigation:</span>
-          <span>Explore deep telemetry, automated maintenance, or run SIH simulation scenarios.</span>
+          <span>Explore deep telemetry, automated maintenance, or run simulation scenarios.</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -824,9 +824,9 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
           </button>
           <button
             onClick={() => onNavigateTab('simulation-lab')}
-            className="px-3.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-semibold transition"
+            className="px-3.5 py-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 text-xs font-semibold transition"
           >
-            Simulation Lab (SIH)
+            Simulation Lab
           </button>
         </div>
       </div>

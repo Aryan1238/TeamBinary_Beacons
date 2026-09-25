@@ -1,0 +1,856 @@
+[
+  {
+    "id": "MNT-20260924-001",
+    "ticket_id": "MNT-20260924-001",
+    "station_id": "AWS-003",
+    "station_name": "Pune",
+    "station_location": "Pune, Maharashtra",
+    "sensor": "temperature",
+    "issue": "Triggered by CRITICAL status: active CRITICAL anomaly. Urgent dispatch or probe recalibration required.",
+    "priority": "CRITICAL",
+    "status": "CLOSED",
+    "created_at": "2026-09-24T23:14:12.208220",
+    "updated_at": "2026-09-24T23:14:12.375632",
+    "assigned_to": "Field Ops Team - Western Region",
+    "evidence": {
+      "investigation_id": null,
+      "triggers": [],
+      "root_cause": "",
+      "observed_value": 42.0
+    },
+    "recommended_action": "Recalibrate RTD sensor, inspect aspirated shield intake.",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:14:12.208220",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-003 (temperature)."
+      }
+    ],
+    "resolution": "Technician replaced RTD sensor probe and cleaned aspiration fan intake.",
+    "verified_at": "2026-09-24T23:14:12.375632",
+    "verification_result": {
+      "success": true,
+      "detail": "Telemetry verified nominal: No active anomaly detected on AWS-003 temperature. Physical values within baseline bounds.",
+      "verified_at": "2026-09-24T23:14:12.375632"
+    },
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:14:12.208220",
+        "event": "TICKET_CREATED",
+        "status": "OPEN",
+        "detail": "Ticket MNT-20260924-001 opened with priority CRITICAL."
+      },
+      {
+        "timestamp": "2026-09-24T23:14:12.216704",
+        "event": "STATUS_CHANGED_TO_ASSIGNED",
+        "status": "ASSIGNED",
+        "detail": "Status updated to ASSIGNED."
+      },
+      {
+        "timestamp": "2026-09-24T23:14:12.239747",
+        "event": "STATUS_CHANGED_TO_IN PROGRESS",
+        "status": "IN PROGRESS",
+        "detail": "Status updated to IN PROGRESS."
+      },
+      {
+        "timestamp": "2026-09-24T23:14:12.245042",
+        "event": "REPAIR_COMPLETED_AWAITING_VERIFICATION",
+        "status": "AWAITING VERIFICATION",
+        "detail": "Field repair logged. Sensor entered AWAITING VERIFICATION state until telemetry validation."
+      },
+      {
+        "timestamp": "2026-09-24T23:14:12.253028",
+        "event": "VERIFICATION_FAILED",
+        "status": "AWAITING VERIFICATION",
+        "detail": "Verification failed: Active anomaly still detected on telemetry stream."
+      },
+      {
+        "timestamp": "2026-09-24T23:14:12.375632",
+        "event": "VERIFICATION_PASSED",
+        "status": "CLOSED",
+        "detail": "Live telemetry validation confirmed nominal operational parameters. Ticket closed successfully."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-002",
+    "ticket_id": "MNT-20260924-002",
+    "station_id": "AWS-002",
+    "station_name": "Bengaluru / HAL Airport",
+    "station_location": "Bengaluru",
+    "sensor": "temperature",
+    "issue": "Sensor probe degraded: HIGH severity anomaly (). Inspection recommended.",
+    "priority": "HIGH",
+    "status": "IN PROGRESS",
+    "created_at": "2026-09-24T23:18:55.448933",
+    "updated_at": "2026-09-24T23:19:30.134935",
+    "assigned_to": "Regional Field Unit",
+    "evidence": {
+      "triggers": [
+        "HIGH_INVESTIGATION"
+      ],
+      "root_cause": "None",
+      "drift_sigma": 0,
+      "observed_value": 24.8
+    },
+    "recommended_action": "Recalibrate RTD Platinum Thermistor probe and verify telemetry link.",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T17:48:55.413Z",
+        "author": "Control Room Operator",
+        "text": "Dispatched via Sensor Health Matrix."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:18:55.448933",
+        "event": "TICKET_CREATED",
+        "status": "OPEN",
+        "detail": "Ticket MNT-20260924-002 opened with priority HIGH."
+      },
+      {
+        "timestamp": "2026-09-24T23:19:27.709314",
+        "event": "STATUS_CHANGED_TO_ASSIGNED",
+        "status": "ASSIGNED",
+        "detail": "Status updated to ASSIGNED."
+      },
+      {
+        "timestamp": "2026-09-24T23:19:30.134935",
+        "event": "STATUS_CHANGED_TO_IN PROGRESS",
+        "status": "IN PROGRESS",
+        "detail": "Status updated to IN PROGRESS."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-003",
+    "ticket_id": "MNT-20260924-003",
+    "station_id": "AWS-005",
+    "station_name": "Kolkata / Dum Dum Intl",
+    "station_location": "Kolkata",
+    "sensor": "temperature",
+    "issue": "Sensor probe degraded: HIGH severity anomaly (). Inspection recommended.",
+    "priority": "HIGH",
+    "status": "OPEN",
+    "created_at": "2026-09-24T23:19:12.757989",
+    "updated_at": "2026-09-24T23:19:12.757989",
+    "assigned_to": "Regional Field Unit",
+    "evidence": {
+      "triggers": [
+        "HIGH_INVESTIGATION"
+      ],
+      "root_cause": "None",
+      "drift_sigma": 0,
+      "observed_value": 31.2
+    },
+    "recommended_action": "Recalibrate RTD Platinum Thermistor probe and verify telemetry link.",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T17:49:12.731Z",
+        "author": "Control Room Operator",
+        "text": "Dispatched via Sensor Health Matrix."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:19:12.757989",
+        "event": "TICKET_CREATED",
+        "status": "OPEN",
+        "detail": "Ticket MNT-20260924-003 opened with priority HIGH."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-004",
+    "ticket_id": "MNT-20260924-004",
+    "station_id": "AWS-003",
+    "station_name": "Pune",
+    "station_location": "Pune",
+    "sensor": "temperature",
+    "issue": "[SIMULATION] Temperature Spike (+14.2°C): Triggered by CRITICAL status: active CRITICAL anomaly. Urgent dispatch or probe recalibration required.",
+    "priority": "CRITICAL",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:36:36.989128",
+    "updated_at": "2026-09-24T23:36:36.989128",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "temperature-spike",
+      "magnitude": 14.2,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Create Maintenance Ticket",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:36:36.989128",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-003 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:36:36.989128",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-004 opened with priority CRITICAL."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-005",
+    "ticket_id": "MNT-20260924-005",
+    "station_id": "AWS-001",
+    "station_name": "Chennai / Minambakkam Intl",
+    "station_location": "Chennai",
+    "sensor": "temperature",
+    "issue": "[SIMULATION] Temperature Spike (+14.2°C): Triggered by CRITICAL status: active CRITICAL anomaly. Urgent dispatch or probe recalibration required.",
+    "priority": "CRITICAL",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:43:44.807626",
+    "updated_at": "2026-09-24T23:43:44.807626",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "temperature-spike",
+      "magnitude": 14.2,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Create Maintenance Ticket",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:43:44.807626",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-001 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:43:44.807626",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-005 opened with priority CRITICAL."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-006",
+    "ticket_id": "MNT-20260924-006",
+    "station_id": "AWS-001",
+    "station_name": "Chennai / Minambakkam Intl",
+    "station_location": "Chennai",
+    "sensor": "temperature",
+    "issue": "[SIMULATION] Temperature Spike (+14.2°C): Triggered by CRITICAL status: active CRITICAL anomaly. Urgent dispatch or probe recalibration required.",
+    "priority": "CRITICAL",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:49:59.690846",
+    "updated_at": "2026-09-24T23:49:59.690846",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "temperature-spike",
+      "magnitude": 14.2,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Create Maintenance Ticket",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:49:59.690846",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-001 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:49:59.690846",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-006 opened with priority CRITICAL."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-007",
+    "ticket_id": "MNT-20260924-007",
+    "station_id": "AWS-002",
+    "station_name": "Bengaluru / HAL Airport",
+    "station_location": "Bengaluru",
+    "sensor": "temperature",
+    "issue": "[SIMULATION] Temperature Drift (+5.0°C): Sensor probe degraded: HIGH severity anomaly (). Inspection recommended.",
+    "priority": "HIGH",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:50:00.120989",
+    "updated_at": "2026-09-24T23:50:00.120989",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "temperature-drift",
+      "magnitude": 5.0,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Sensor Inspection Required",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:50:00.120989",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-002 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:50:00.120989",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-007 opened with priority HIGH."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-008",
+    "ticket_id": "MNT-20260924-008",
+    "station_id": "AWS-003",
+    "station_name": "Pune",
+    "station_location": "Pune",
+    "sensor": "temperature",
+    "issue": "[SIMULATION] Frozen Sensor (Zero Variance): Sensor probe degraded: HIGH severity anomaly (). Inspection recommended.",
+    "priority": "HIGH",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:50:00.513651",
+    "updated_at": "2026-09-24T23:50:00.513651",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "frozen-sensor",
+      "magnitude": 0.0,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Sensor Inspection Required",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:50:00.513651",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-003 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:50:00.513651",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-008 opened with priority HIGH."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-009",
+    "ticket_id": "MNT-20260924-009",
+    "station_id": "AWS-004",
+    "station_name": "Mumbai / Santacruz Intl",
+    "station_location": "Mumbai",
+    "sensor": "humidity",
+    "issue": "[SIMULATION] Humidity Anomaly (+25%): Nominal operational telemetry. Probe value 100.0 % falls within acceptable envelope.",
+    "priority": "LOW",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:50:00.934397",
+    "updated_at": "2026-09-24T23:50:00.934397",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "humidity-spike",
+      "magnitude": 25.0,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Possible Genuine Weather Event",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:50:00.934397",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-004 (humidity)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:50:00.934397",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-009 opened with priority LOW."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-010",
+    "ticket_id": "MNT-20260924-010",
+    "station_id": "AWS-001",
+    "station_name": "Chennai / Minambakkam Intl",
+    "station_location": "Chennai",
+    "sensor": "temperature",
+    "issue": "[SIMULATION] Temperature Spike (+14.2°C): Triggered by CRITICAL status: active CRITICAL anomaly. Urgent dispatch or probe recalibration required.",
+    "priority": "CRITICAL",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:51:47.534201",
+    "updated_at": "2026-09-24T23:51:47.534201",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "temperature-spike",
+      "magnitude": 14.2,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Create Maintenance Ticket",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:51:47.534201",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-001 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:51:47.534201",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-010 opened with priority CRITICAL."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-011",
+    "ticket_id": "MNT-20260924-011",
+    "station_id": "AWS-002",
+    "station_name": "Bengaluru / HAL Airport",
+    "station_location": "Bengaluru",
+    "sensor": "temperature",
+    "issue": "[SIMULATION] Temperature Drift (+5.0°C): Sensor probe degraded: HIGH severity anomaly (). Inspection recommended.",
+    "priority": "HIGH",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:51:47.942659",
+    "updated_at": "2026-09-24T23:51:47.942659",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "temperature-drift",
+      "magnitude": 5.0,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Sensor Inspection Required",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:51:47.942659",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-002 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:51:47.942659",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-011 opened with priority HIGH."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-012",
+    "ticket_id": "MNT-20260924-012",
+    "station_id": "AWS-003",
+    "station_name": "Pune",
+    "station_location": "Pune",
+    "sensor": "temperature",
+    "issue": "[SIMULATION] Frozen Sensor (Zero Variance): Sensor probe degraded: HIGH severity anomaly (). Inspection recommended.",
+    "priority": "HIGH",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:51:48.328657",
+    "updated_at": "2026-09-24T23:51:48.328657",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "frozen-sensor",
+      "magnitude": 0.0,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Sensor Inspection Required",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:51:48.328657",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-003 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:51:48.328657",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-012 opened with priority HIGH."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-013",
+    "ticket_id": "MNT-20260924-013",
+    "station_id": "AWS-004",
+    "station_name": "Mumbai / Santacruz Intl",
+    "station_location": "Mumbai",
+    "sensor": "humidity",
+    "issue": "[SIMULATION] Humidity Anomaly (+25%): Sensor probe degraded: HIGH severity anomaly (). Inspection recommended.",
+    "priority": "HIGH",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:51:48.753891",
+    "updated_at": "2026-09-24T23:51:48.753891",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "humidity-spike",
+      "magnitude": 25.0,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Sensor Inspection Required",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:51:48.753891",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-004 (humidity)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:51:48.753891",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-013 opened with priority HIGH."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-014",
+    "ticket_id": "MNT-20260924-014",
+    "station_id": "AWS-005",
+    "station_name": "Kolkata / Dum Dum Intl",
+    "station_location": "Kolkata",
+    "sensor": "pressure",
+    "issue": "[SIMULATION] Pressure Drop (-18.0 hPa): Sensor probe degraded: HIGH severity anomaly (). Inspection recommended.",
+    "priority": "HIGH",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:51:49.139095",
+    "updated_at": "2026-09-24T23:51:49.139095",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "pressure-drop",
+      "magnitude": -18.0,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Sensor Inspection Required",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:51:49.139095",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-005 (pressure)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:51:49.139095",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-014 opened with priority HIGH."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-015",
+    "ticket_id": "MNT-20260924-015",
+    "station_id": "AWS-006",
+    "station_name": "Ahmedabad / Sardar Patel",
+    "station_location": "Ahmedabad",
+    "sensor": "wind",
+    "issue": "[SIMULATION] Wind Anomaly (+22.0 km/h): Sensor probe degraded: HIGH severity anomaly (). Inspection recommended.",
+    "priority": "HIGH",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:51:49.479408",
+    "updated_at": "2026-09-24T23:51:49.479408",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "wind-anomaly",
+      "magnitude": 22.0,
+      "triggers": [],
+      "detection_mechanism": "Rule-Based"
+    },
+    "recommended_action": "Sensor Inspection Required",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:51:49.479408",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-006 (wind)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:51:49.479408",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-015 opened with priority HIGH."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-016",
+    "ticket_id": "MNT-20260924-016",
+    "station_id": "AWS-007",
+    "station_name": "Hyderabad / Begumpet",
+    "station_location": "Hyderabad",
+    "sensor": "temperature",
+    "issue": "[SIMULATION] Communication Failure (Link Lost): Triggered by CRITICAL status: active CRITICAL anomaly. Urgent dispatch or probe recalibration required.",
+    "priority": "CRITICAL",
+    "status": "ASSIGNED",
+    "is_simulation": true,
+    "source": "simulation",
+    "created_at": "2026-09-24T23:51:49.824269",
+    "updated_at": "2026-09-24T23:51:49.824269",
+    "assigned_to": "Simulation Testbench Engine",
+    "evidence": {
+      "scenario": "communication-failure",
+      "magnitude": 2.5,
+      "triggers": [],
+      "detection_mechanism": "Link Freshness / Availability"
+    },
+    "recommended_action": "Create Maintenance Ticket",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:51:49.824269",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-007 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:51:49.824269",
+        "event": "TICKET_CREATED",
+        "status": "ASSIGNED",
+        "detail": "Ticket MNT-20260924-016 opened with priority CRITICAL."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260924-017",
+    "ticket_id": "MNT-20260924-017",
+    "station_id": "AWS-001",
+    "station_name": "Chennai Minambakkam",
+    "station_location": "Chennai Minambakkam",
+    "sensor": "temperature",
+    "issue": "LSTM sequence anomaly detected (ratio 16.72x > 1.0x). Mild sequence divergence without physical limit violation.",
+    "priority": "MEDIUM",
+    "status": "OPEN",
+    "is_simulation": false,
+    "source": "production",
+    "created_at": "2026-09-24T23:55:35.322960",
+    "updated_at": "2026-09-24T23:55:35.322960",
+    "assigned_to": "Regional Field Unit",
+    "evidence": {
+      "investigation_id": "INV-AWS-001-20260924235524",
+      "triggers": [
+        "LSTM_ANOMALY"
+      ],
+      "observed_value": "29.8°C",
+      "expected_range": "20.0°C — 38.0°C",
+      "deviation": 0
+    },
+    "recommended_action": "Continue Monitoring",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T23:55:35.322960",
+        "author": "System Dispatch Engine",
+        "text": "Work order generated automatically for AWS-001 (temperature)."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-24T23:55:35.322960",
+        "event": "TICKET_CREATED",
+        "status": "OPEN",
+        "detail": "Ticket MNT-20260924-017 opened with priority MEDIUM."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260925-018",
+    "ticket_id": "MNT-20260925-018",
+    "station_id": "AWS-006",
+    "station_name": "Ahmedabad / Sardar Patel",
+    "station_location": "Ahmedabad",
+    "sensor": "temperature",
+    "issue": "Observation watch: isolated MEDIUM sequence deviation. Telemetry remains operational under continuous scan.",
+    "priority": "MEDIUM",
+    "status": "IN PROGRESS",
+    "is_simulation": false,
+    "source": "production",
+    "created_at": "2026-09-25T00:00:42.367675",
+    "updated_at": "2026-09-25T00:01:35.406561",
+    "assigned_to": "Regional Field Unit",
+    "evidence": {
+      "triggers": [
+        "MEDIUM_INVESTIGATION"
+      ],
+      "root_cause": "None",
+      "drift_sigma": 0,
+      "observed_value": 33.9
+    },
+    "recommended_action": "Recalibrate RTD Platinum Thermistor probe and verify telemetry link.",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T18:30:42.320Z",
+        "author": "Control Room Operator",
+        "text": "Dispatched via Sensor Health Matrix."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-25T00:00:42.367675",
+        "event": "TICKET_CREATED",
+        "status": "OPEN",
+        "detail": "Ticket MNT-20260925-018 opened with priority MEDIUM."
+      },
+      {
+        "timestamp": "2026-09-25T00:01:34.732835",
+        "event": "STATUS_CHANGED_TO_ASSIGNED",
+        "status": "ASSIGNED",
+        "detail": "Status updated to ASSIGNED."
+      },
+      {
+        "timestamp": "2026-09-25T00:01:35.406561",
+        "event": "STATUS_CHANGED_TO_IN PROGRESS",
+        "status": "IN PROGRESS",
+        "detail": "Status updated to IN PROGRESS."
+      }
+    ]
+  },
+  {
+    "id": "MNT-20260925-019",
+    "ticket_id": "MNT-20260925-019",
+    "station_id": "AWS-005",
+    "station_name": "Kolkata / Dum Dum Intl",
+    "station_location": "Kolkata",
+    "sensor": "rainfall",
+    "issue": "Nominal operational telemetry. Probe value 0.0 mm falls within acceptable envelope.",
+    "priority": "MEDIUM",
+    "status": "IN PROGRESS",
+    "is_simulation": false,
+    "source": "production",
+    "created_at": "2026-09-25T00:03:16.168847",
+    "updated_at": "2026-09-25T00:03:22.872660",
+    "assigned_to": "Regional Field Unit",
+    "evidence": {
+      "triggers": [
+        "NOMINAL"
+      ],
+      "root_cause": "None",
+      "drift_sigma": 0,
+      "observed_value": 0
+    },
+    "recommended_action": "Recalibrate Tipping Bucket Pluviometer probe and verify telemetry link.",
+    "notes": [
+      {
+        "timestamp": "2026-09-24T18:33:15.959Z",
+        "author": "Control Room Operator",
+        "text": "Dispatched via Sensor Health Matrix."
+      }
+    ],
+    "resolution": null,
+    "verified_at": null,
+    "verification_result": null,
+    "timeline": [
+      {
+        "timestamp": "2026-09-25T00:03:16.168847",
+        "event": "TICKET_CREATED",
+        "status": "OPEN",
+        "detail": "Ticket MNT-20260925-019 opened with priority MEDIUM."
+      },
+      {
+        "timestamp": "2026-09-25T00:03:21.523014",
+        "event": "STATUS_CHANGED_TO_ASSIGNED",
+        "status": "ASSIGNED",
+        "detail": "Status updated to ASSIGNED."
+      },
+      {
+        "timestamp": "2026-09-25T00:03:22.872660",
+        "event": "STATUS_CHANGED_TO_IN PROGRESS",
+        "status": "IN PROGRESS",
+        "detail": "Status updated to IN PROGRESS."
+      }
+    ]
+  }
+]

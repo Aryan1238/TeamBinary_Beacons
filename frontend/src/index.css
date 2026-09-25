@@ -1,5 +1,35 @@
 @import "tailwindcss";
 
+:root {
+  /* Sky Blue & White Civic Theme Tokens */
+  --gov-blue: #0284C7;
+  --gov-blue-dark: #0369A1;
+  --gov-blue-light: #38BDF8;
+  --gov-saffron: #D97706;
+  --gov-india-green: #16A34A;
+
+  /* 4-Tier Semantic Severity Scale for Light Theme */
+  --status-normal: #16A34A;
+  --status-normal-bg: #DCFCE7;
+  --status-normal-border: #86EFAC;
+
+  --status-watch: #D97706;
+  --status-watch-bg: #FEF3C7;
+  --status-watch-border: #FCD34D;
+
+  --status-severe: #EA580C;
+  --status-severe-bg: #FFEDD5;
+  --status-severe-border: #FDBA74;
+
+  --status-critical: #DC2626;
+  --status-critical-bg: #FEE2E2;
+  --status-critical-border: #FCA5A5;
+
+  --status-offline: #64748B;
+  --status-offline-bg: #F1F5F9;
+  --status-offline-border: #CBD5E1;
+}
+
 @layer base {
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

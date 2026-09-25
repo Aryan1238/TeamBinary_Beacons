@@ -16,23 +16,23 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     switch (status) {
       case 'NORMAL':
         return {
-          bg: 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.15)]',
-          dot: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]',
+          bg: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+          dot: 'bg-emerald-500',
         };
       case 'WARNING':
         return {
-          bg: 'bg-amber-500/15 border-amber-500/35 text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.15)]',
-          dot: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]',
+          bg: 'bg-amber-50 border-amber-200 text-amber-700',
+          dot: 'bg-amber-500',
         };
       case 'ANOMALY':
         return {
-          bg: 'bg-rose-500/20 border-rose-500/40 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.25)]',
-          dot: 'bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.7)]',
+          bg: 'bg-red-50 border-red-200 text-red-700',
+          dot: 'bg-red-500',
         };
       case 'OFFLINE':
       default:
         return {
-          bg: 'bg-slate-800/60 border-slate-700/60 text-slate-400',
+          bg: 'bg-slate-100 border-slate-200 text-slate-600',
           dot: 'bg-slate-400',
         };
     }

@@ -64,20 +64,20 @@ export const MOCK_STATIONS: AWSStation[] = [
     dataSource: '[Meteostat + NOAA]',
     meteostatId: '43063',
     noaaId: '43063099999',
-    status: 'ANOMALY',
-    healthScore: 74,
+    status: 'NORMAL',
+    healthScore: 97,
     lastPingSeconds: 1,
     sensors: {
-      temperature: { value: 34.8, unit: '°C', status: 'ANOMALY', min24h: 19.5, max24h: 34.8, expectedMin: 20.0, expectedMax: 29.5, lastUpdated: 'Just now' },
-      humidity: { value: 58, unit: '%', status: 'NORMAL', min24h: 45, max24h: 88, expectedMin: 45, expectedMax: 85, lastUpdated: 'Just now' },
-      pressure: { value: 948.5, unit: 'hPa', status: 'NORMAL', min24h: 945.8, max24h: 951.2, expectedMin: 944.0, expectedMax: 953.0, lastUpdated: 'Just now' },
-      wind: { value: 8.6, unit: 'km/h', status: 'NORMAL', min24h: 2.0, max24h: 15.0, expectedMin: 1.0, expectedMax: 20.0, lastUpdated: 'Just now' },
-      rainfall: { value: 0.0, unit: 'mm', status: 'NORMAL', min24h: 0.0, max24h: 0.0, expectedMin: 0.0, expectedMax: 5.0, lastUpdated: 'Just now' }
+      temperature: { value: 27.8, unit: '°C', status: 'NORMAL', min24h: 19.5, max24h: 29.2, expectedMin: 20.0, expectedMax: 29.5, lastUpdated: '1s ago' },
+      humidity: { value: 58, unit: '%', status: 'NORMAL', min24h: 45, max24h: 88, expectedMin: 45, expectedMax: 85, lastUpdated: '1s ago' },
+      pressure: { value: 948.5, unit: 'hPa', status: 'NORMAL', min24h: 945.8, max24h: 951.2, expectedMin: 944.0, expectedMax: 953.0, lastUpdated: '1s ago' },
+      wind: { value: 8.6, unit: 'km/h', status: 'NORMAL', min24h: 2.0, max24h: 15.0, expectedMin: 1.0, expectedMax: 20.0, lastUpdated: '1s ago' },
+      rainfall: { value: 0.0, unit: 'mm', status: 'NORMAL', min24h: 0.0, max24h: 0.0, expectedMin: 0.0, expectedMax: 5.0, lastUpdated: '1s ago' }
     },
-    weatherCondition: 'Isolated Thermal Discrepancy',
-    forecastSummary: 'Sudden +5.3°C deviation from regional cluster. Physical rate-of-change violated.',
-    calibrationDueDays: 12,
-    communicationUptime: 96.1
+    weatherCondition: 'Deccan Plateau Clear • Nominal Baseline',
+    forecastSummary: 'Synoptic pressure and thermal gradient within expected historical bounds.',
+    calibrationDueDays: 140,
+    communicationUptime: 99.5
   },
   {
     id: 'AWS-004',

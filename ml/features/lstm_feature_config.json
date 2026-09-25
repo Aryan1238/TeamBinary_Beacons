@@ -1,0 +1,59 @@
+{
+  "features": [
+    "temperature",
+    "humidity",
+    "pressure",
+    "wind_speed",
+    "wind_dir_sin",
+    "wind_dir_cos",
+    "hour_sin",
+    "hour_cos",
+    "day_of_year",
+    "temperature_roc",
+    "humidity_roc",
+    "pressure_roc",
+    "wind_speed_roc",
+    "temperature_roll_mean_3h",
+    "temperature_roll_std_3h",
+    "temperature_roll_mean_24h",
+    "humidity_roll_mean_3h",
+    "humidity_roll_std_3h",
+    "humidity_roll_mean_24h",
+    "pressure_roll_mean_3h",
+    "pressure_roll_std_3h",
+    "pressure_roll_mean_24h",
+    "wind_speed_roll_mean_3h",
+    "wind_speed_roll_std_3h",
+    "wind_speed_roll_mean_24h"
+  ],
+  "n_features": 25,
+  "sequence_length": 24,
+  "stride": 1,
+  "special_case_excluded_series": [
+    {
+      "station_id": 43295099999,
+      "city": "Bengaluru",
+      "source": "NOAA",
+      "reason": "3-hourly cadence fails <=1h consecutive rule; pressure_unreliable_source"
+    },
+    {
+      "station_id": 43057099999,
+      "city": "Mumbai",
+      "source": "NOAA",
+      "reason": "3-hourly synoptic cadence fails <=1h consecutive rule"
+    },
+    {
+      "station_id": 43063099999,
+      "city": "Pune",
+      "source": "NOAA",
+      "reason": "3-hourly synoptic cadence fails <=1h consecutive rule"
+    }
+  ],
+  "amendment_metadata_diff_features": [
+    "temperature_diff_other_source",
+    "humidity_diff_other_source",
+    "pressure_diff_other_source",
+    "wind_speed_diff_other_source",
+    "single_source_fault"
+  ]
+}

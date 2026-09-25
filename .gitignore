@@ -38,3 +38,13 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Large generated data pipelines (>100MB exceeding GitHub limits)
+data/anomaly_labeled/
+data/ml_ready/
+
+# Local scratch files
+full_user_prompt.txt
+scratch_prompt.txt
+scratch/
+

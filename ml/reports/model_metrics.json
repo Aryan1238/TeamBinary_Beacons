@@ -1,0 +1,16 @@
+{
+  "total_test_sequences": 29577,
+  "true_positives": 1021,
+  "false_positives": 1358,
+  "true_negatives": 24368,
+  "false_negatives": 2830,
+  "accuracy": 0.8584,
+  "precision": 0.42917,
+  "recall_sensitivity": 0.26513,
+  "f1_score": 0.32777,
+  "specificity": 0.94721,
+  "false_positive_rate": 0.05279,
+  "false_negative_rate": 0.73487,
+  "chosen_threshold": 0.24231,
+  "percentile_used": 90.0
+}

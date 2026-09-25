@@ -148,8 +148,8 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               AI Anomaly Simulation Lab
             </h1>
-            <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-semibold">
-              SIH VERIFICATION SUITE
+            <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 font-semibold">
+              VERIFICATION SUITE
             </span>
           </div>
           <p className="text-xs text-slate-500 font-sans mt-0.5">

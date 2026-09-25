@@ -1,0 +1,32 @@
+{
+  "feature_count": 25,
+  "sequence_length": 24,
+  "stride": 1,
+  "train": {
+    "total_possible_windows": 199717,
+    "valid_sequences": 122231,
+    "normal_sequences": 101846,
+    "anomaly_sequences": 20385,
+    "nan_dropped": 48494,
+    "gap_dropped": 15648,
+    "station_excluded_dropped": 13344
+  },
+  "val": {
+    "total_possible_windows": 49542,
+    "valid_sequences": 29938,
+    "normal_sequences": 24346,
+    "anomaly_sequences": 5592,
+    "nan_dropped": 11399,
+    "gap_dropped": 4453,
+    "station_excluded_dropped": 3752
+  },
+  "test": {
+    "total_possible_windows": 36689,
+    "valid_sequences": 29577,
+    "normal_sequences": 25726,
+    "anomaly_sequences": 3851,
+    "nan_dropped": 4556,
+    "gap_dropped": 1435,
+    "station_excluded_dropped": 1121
+  }
+}

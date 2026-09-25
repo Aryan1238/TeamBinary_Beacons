@@ -181,7 +181,7 @@ export function App() {
   const criticalCount = anomalies.filter(a => a.severity === 'CRITICAL').length;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#070B14] text-slate-100 select-none">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 select-none">
       {/* Persistent Left Sidebar (Hidden if in landing, monitoring-dashboard, or dashboard-app mode) */}
       {currentTab !== 'landing' && currentTab !== 'monitoring-dashboard' && currentTab !== 'dashboard-app' && (
         <Sidebar
@@ -379,7 +379,7 @@ export function App() {
         </main>
       </div>
 
-      {/* Floating ⚡ SIH DEMO Controller & Legacy Modals (Hidden on landing & monitoring-dashboard) */}
+      {/* Floating ⚡ DEMO Controller & Legacy Modals (Hidden on landing & monitoring-dashboard) */}
       {currentTab !== 'landing' && currentTab !== 'monitoring-dashboard' && (
         <>
           <SIHDemoController

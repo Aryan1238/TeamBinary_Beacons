@@ -84,32 +84,32 @@ export const NetworkVisual: React.FC = () => {
 
   return (
     <div className="relative w-full max-w-2xl mx-auto">
-      {/* Outer Glow & Weather Glass Frame */}
-      <div className="relative rounded-3xl bg-gradient-to-b from-[#111C35]/95 via-[#0D162B]/95 to-[#090F1E] border border-sky-500/30 p-4 sm:p-6 shadow-[0_0_60px_rgba(2,132,199,0.18)] backdrop-blur-2xl overflow-hidden">
+      {/* Outer Card Frame */}
+      <div className="relative rounded-3xl bg-white border border-slate-200 p-4 sm:p-6 shadow-md backdrop-blur-2xl overflow-hidden">
         
-        {/* Atmospheric Weather Background Lighting: Dawn Gold + Storm Blue Aura */}
-        <div className="absolute -top-12 -left-12 w-72 h-72 bg-amber-500/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute top-1/2 right-0 w-80 h-80 bg-sky-500/15 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute -bottom-10 left-1/3 w-64 h-64 bg-indigo-600/15 rounded-full blur-[90px] pointer-events-none" />
+        {/* Atmospheric Weather Background Lighting: Subtle Sky & Indigo tints */}
+        <div className="absolute -top-12 -left-12 w-72 h-72 bg-sky-100/40 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/2 right-0 w-80 h-80 bg-blue-50/50 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute -bottom-10 left-1/3 w-64 h-64 bg-indigo-50/40 rounded-full blur-[90px] pointer-events-none" />
 
         {/* Header Ribbon / Status Bar */}
-        <div className="relative flex items-center justify-between pb-3.5 mb-3 border-b border-slate-800/80">
+        <div className="relative flex items-center justify-between pb-3.5 mb-3 border-b border-slate-200">
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
             </span>
             <div className="text-left">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white font-mono tracking-wider flex items-center gap-1.5">
-                  <CloudSun className="w-3.5 h-3.5 text-amber-300" />
+                <span className="text-xs font-bold text-slate-800 font-mono tracking-wider flex items-center gap-1.5">
+                  <CloudSun className="w-3.5 h-3.5 text-amber-500" />
                   METEOROLOGICAL AWS MESH
                 </span>
-                <span className="text-[10px] text-sky-300 bg-sky-950/80 border border-sky-500/30 px-1.5 py-0.2 rounded font-mono">
+                <span className="text-[10px] text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.2 rounded font-mono font-semibold">
                   LIVE STREAM
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 font-mono">
+              <p className="text-[10px] text-slate-500 font-mono">
                 13 Regional Nodes • Automated Packet Assurance
               </p>
             </div>
@@ -117,10 +117,10 @@ export const NetworkVisual: React.FC = () => {
 
           <div className="flex items-center gap-2 text-right">
             <div className="hidden sm:block">
-              <p className="text-[10px] text-slate-400 font-mono">Sync Latency</p>
-              <p className="text-xs font-semibold text-emerald-400 font-mono">14ms • Synchronized</p>
+              <p className="text-[10px] text-slate-500 font-mono">Sync Latency</p>
+              <p className="text-xs font-semibold text-emerald-600 font-mono">14ms • Synchronized</p>
             </div>
-            <div className="p-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-sky-400">
+            <div className="p-1.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-600">
               <Radio className="w-4 h-4 animate-pulse" />
             </div>
           </div>
@@ -241,8 +241,8 @@ export const NetworkVisual: React.FC = () => {
                     cx={station.x}
                     cy={station.y}
                     r={isActive ? 4 : 3}
-                    fill={isActive ? '#F59E0B' : '#38BDF8'}
-                    stroke="#0B132B"
+                    fill={isActive ? '#F59E0B' : '#0284C7'}
+                    stroke="#FFFFFF"
                     strokeWidth="1.5"
                   />
 
@@ -252,8 +252,8 @@ export const NetworkVisual: React.FC = () => {
                     y={station.y + 3}
                     fontSize="9"
                     fontFamily="monospace"
-                    fill="#CBD5E1"
-                    className="font-medium tracking-tight"
+                    fill="#334155"
+                    className="font-semibold tracking-tight"
                   >
                     {station.code}
                   </text>
@@ -263,80 +263,80 @@ export const NetworkVisual: React.FC = () => {
           </svg>
 
           {/* Overlaid Badges */}
-          <div className="absolute left-4 top-4 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0F172A]/90 border border-sky-500/40 backdrop-blur-md shadow-lg">
-            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <div className="text-[11px] font-mono text-slate-200">
-              <span className="text-amber-300 font-bold">AWS-PUN-04</span>: Pune Transducer Sync
+          <div className="absolute left-4 top-4 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/95 border border-amber-200 backdrop-blur-md shadow-xs">
+            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <div className="text-[11px] font-mono text-slate-700">
+              <span className="text-amber-700 font-bold">AWS-PUN-04</span>: Pune Transducer Sync
             </div>
           </div>
 
-          <div className="absolute right-4 bottom-4 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0F172A]/90 border border-emerald-500/40 backdrop-blur-md shadow-lg">
-            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-            <div className="text-[11px] font-mono text-slate-200">
-              Atmospheric Triangulation: <span className="text-emerald-400 font-bold">NOMINAL</span>
+          <div className="absolute right-4 bottom-4 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/95 border border-emerald-200 backdrop-blur-md shadow-xs">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            <div className="text-[11px] font-mono text-slate-700">
+              Atmospheric Triangulation: <span className="text-emerald-700 font-bold">NOMINAL</span>
             </div>
           </div>
         </div>
 
         {/* 4 Weather Telemetry Cards (Sun / Rain / Pressure / Wind Palette) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-slate-800/80">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-slate-200">
           
-          {/* Temperature (Sun / Amber Gold) */}
-          <div className="p-3 rounded-2xl bg-gradient-to-b from-amber-500/10 to-slate-900/90 border border-amber-500/30 hover:border-amber-400/60 transition-all duration-200">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-300/90">Temperature</span>
-              <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+          {/* Temperature */}
+          <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/80 hover:border-amber-300 transition-all duration-200">
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-800 font-semibold">Temperature</span>
+              <Thermometer className="w-3.5 h-3.5 text-amber-600" />
             </div>
-            <div className="text-base sm:text-lg font-bold text-white font-mono flex items-baseline gap-0.5">
+            <div className="text-base sm:text-lg font-bold text-slate-900 font-mono flex items-baseline gap-0.5">
               <span>{telemetry.temperature}</span>
-              <span className="text-xs text-amber-300/80 font-normal">°C</span>
+              <span className="text-xs text-amber-700 font-normal">°C</span>
             </div>
-            <p className="text-[9px] text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
+            <p className="text-[9px] text-emerald-700 font-mono flex items-center gap-1 mt-0.5">
               <span>●</span> Solar equilibrium
             </p>
           </div>
 
-          {/* Humidity (Rain / Sky Blue) */}
-          <div className="p-3 rounded-2xl bg-gradient-to-b from-sky-500/10 to-slate-900/90 border border-sky-500/30 hover:border-sky-400/60 transition-all duration-200">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-sky-300/90">Humidity</span>
-              <Droplets className="w-3.5 h-3.5 text-sky-400" />
+          {/* Humidity */}
+          <div className="p-3 rounded-2xl bg-sky-50/60 border border-sky-200/80 hover:border-sky-300 transition-all duration-200">
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-sky-800 font-semibold">Humidity</span>
+              <Droplets className="w-3.5 h-3.5 text-sky-600" />
             </div>
-            <div className="text-base sm:text-lg font-bold text-white font-mono flex items-baseline gap-0.5">
+            <div className="text-base sm:text-lg font-bold text-slate-900 font-mono flex items-baseline gap-0.5">
               <span>{telemetry.humidity}</span>
-              <span className="text-xs text-sky-300/80 font-normal">%</span>
+              <span className="text-xs text-sky-700 font-normal">%</span>
             </div>
-            <p className="text-[9px] text-slate-400 font-mono mt-0.5">
+            <p className="text-[9px] text-slate-500 font-mono mt-0.5">
               Dew point 20.8°C
             </p>
           </div>
 
-          {/* Pressure (Storm Indigo / Barometer) */}
-          <div className="p-3 rounded-2xl bg-gradient-to-b from-indigo-500/10 to-slate-900/90 border border-indigo-500/30 hover:border-indigo-400/60 transition-all duration-200">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-300/90">Pressure</span>
-              <Gauge className="w-3.5 h-3.5 text-indigo-400" />
+          {/* Pressure */}
+          <div className="p-3 rounded-2xl bg-indigo-50/60 border border-indigo-200/80 hover:border-indigo-300 transition-all duration-200">
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-800 font-semibold">Pressure</span>
+              <Gauge className="w-3.5 h-3.5 text-indigo-600" />
             </div>
-            <div className="text-base sm:text-lg font-bold text-white font-mono flex items-baseline gap-0.5">
+            <div className="text-base sm:text-lg font-bold text-slate-900 font-mono flex items-baseline gap-0.5">
               <span>{telemetry.pressure}</span>
-              <span className="text-xs text-indigo-300/80 font-normal">hPa</span>
+              <span className="text-xs text-indigo-700 font-normal">hPa</span>
             </div>
-            <p className="text-[9px] text-slate-400 font-mono mt-0.5">
+            <p className="text-[9px] text-slate-500 font-mono mt-0.5">
               Barometric SLP
             </p>
           </div>
 
-          {/* Wind (Clear Breeze / Teal Cyan) */}
-          <div className="p-3 rounded-2xl bg-gradient-to-b from-teal-500/10 to-slate-900/90 border border-teal-500/30 hover:border-teal-400/60 transition-all duration-200">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-teal-300/90">Wind</span>
-              <Wind className="w-3.5 h-3.5 text-teal-400" />
+          {/* Wind */}
+          <div className="p-3 rounded-2xl bg-teal-50/60 border border-teal-200/80 hover:border-teal-300 transition-all duration-200">
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-teal-800 font-semibold">Wind</span>
+              <Wind className="w-3.5 h-3.5 text-teal-600" />
             </div>
-            <div className="text-base sm:text-lg font-bold text-white font-mono flex items-baseline gap-0.5">
+            <div className="text-base sm:text-lg font-bold text-slate-900 font-mono flex items-baseline gap-0.5">
               <span>{telemetry.wind}</span>
-              <span className="text-xs text-teal-300/80 font-normal">km/h</span>
+              <span className="text-xs text-teal-700 font-normal">km/h</span>
             </div>
-            <p className="text-[9px] text-slate-400 font-mono mt-0.5">
+            <p className="text-[9px] text-slate-500 font-mono mt-0.5">
               Gusts 15.2 km/h
             </p>
           </div>

@@ -1,0 +1,123 @@
+{
+  "model_metrics": {
+    "total_test_sequences": 29577,
+    "true_positives": 1021,
+    "false_positives": 1358,
+    "true_negatives": 24368,
+    "false_negatives": 2830,
+    "accuracy": 0.8584,
+    "precision": 0.42917,
+    "recall_sensitivity": 0.26513,
+    "f1_score": 0.32777,
+    "specificity": 0.94721,
+    "false_positive_rate": 0.05279,
+    "false_negative_rate": 0.73487,
+    "chosen_threshold": 0.24231,
+    "percentile_used": 90.0
+  },
+  "reconstruction_stats": {
+    "normal_train": {
+      "count": 101846,
+      "mean": 0.14441505074501038,
+      "std": 0.18834152817726135,
+      "p50": 0.1272209882736206,
+      "p90": 0.2113216370344162,
+      "p95": 0.24997839331626892,
+      "p99": 0.41580286622047424
+    },
+    "normal_val": {
+      "count": 24346,
+      "mean": 0.16133099794387817,
+      "std": 0.15565860271453857,
+      "p50": 0.14659008383750916,
+      "p90": 0.24231377243995667,
+      "p95": 0.28228268027305603,
+      "p99": 0.3863333463668823
+    },
+    "anomaly_val": {
+      "count": 5592,
+      "mean": 0.23105084896087646,
+      "std": 0.25701168179512024,
+      "p50": 0.18580633401870728,
+      "p90": 0.3838028013706207,
+      "p95": 0.543637752532959,
+      "p99": 0.7297333478927612
+    },
+    "normal_test": {
+      "count": 25726,
+      "mean": 0.12655504047870636,
+      "std": 0.06723590940237045,
+      "p50": 0.11356020718812943,
+      "p90": 0.21178676187992096,
+      "p95": 0.2455364614725113,
+      "p99": 0.35126057267189026
+    },
+    "anomaly_test": {
+      "count": 3851,
+      "mean": 0.19637952744960785,
+      "std": 0.13039708137512207,
+      "p50": 0.16061997413635254,
+      "p90": 0.3546243906021118,
+      "p95": 0.4507182240486145,
+      "p99": 0.650896430015564
+    }
+  },
+  "fault_type_detection": {
+    "TEMP_SPIKE": {
+      "total_windows": 987,
+      "detected_as_anomaly": 145,
+      "missed": 842,
+      "detection_rate_pct": 14.69
+    },
+    "TEMP_DRIFT": {
+      "total_windows": 200,
+      "detected_as_anomaly": 23,
+      "missed": 177,
+      "detection_rate_pct": 11.5
+    },
+    "FROZEN_SENSOR": {
+      "total_windows": 307,
+      "detected_as_anomaly": 54,
+      "missed": 253,
+      "detection_rate_pct": 17.59
+    },
+    "HUMIDITY_ANOMALY": {
+      "total_windows": 615,
+      "detected_as_anomaly": 164,
+      "missed": 451,
+      "detection_rate_pct": 26.67
+    },
+    "PRESSURE_ANOMALY": {
+      "total_windows": 798,
+      "detected_as_anomaly": 127,
+      "missed": 671,
+      "detection_rate_pct": 15.91
+    },
+    "WIND_ANOMALY": {
+      "total_windows": 1104,
+      "detected_as_anomaly": 557,
+      "missed": 547,
+      "detection_rate_pct": 50.45
+    },
+    "COMMUNICATION_FAILURE": {
+      "total_windows": 0,
+      "detected_as_anomaly": 0,
+      "missed": 0,
+      "detection_rate_pct": 0.0
+    }
+  },
+  "single_source_fault_breakout": {
+    "single_source_fault_true": {
+      "total_windows": 1298,
+      "detected_as_anomaly": 629,
+      "missed": 669,
+      "detection_rate_pct": 48.46
+    },
+    "single_source_fault_false": {
+      "total_windows": 2553,
+      "detected_as_anomaly": 392,
+      "missed": 2161,
+      "detection_rate_pct": 15.35
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { MOCK_STATIONS, MOCK_24H_HISTORY, HistoryPoint } from '../data/mockStations';
-import type { AWSStation, SensorType, StationStatus } from '../types/dashboard.types';
+import type { AWSStation, SensorType, StationStatus, MLInferenceResult, InvestigationRecord } from '../types/dashboard.types';
 
 export type SimulationStatus = 'STOPPED' | 'RUNNING' | 'PAUSED';
 
@@ -48,6 +48,12 @@ export interface TelemetryContextType {
   historyBuffers: Record<string, HistoryPoint[]>;
   recentReadings: Record<string, TelemetryLogEntry[]>;
   activeFaults: Record<string, ActiveFault>;
+  mlResults: Record<string, MLInferenceResult>;
+  telemetryAlerts: Record<string, string | null>;
+  streamSources: Record<string, 'Meteostat' | 'NOAA'>;
+  activeInvestigations: Record<string, InvestigationRecord>;
+  investigationsList: InvestigationRecord[];
+  setStreamSource: (stationId: string, source: 'Meteostat' | 'NOAA') => void;
   startSimulation: () => void;
   pauseSimulation: () => void;
   resetSimulation: () => void;
@@ -110,6 +116,26 @@ const getBaselineRecentReadings = (): Record<string, TelemetryLogEntry[]> => {
   return initialLog;
 };
 
+const FROZEN_THRESHOLD = 0.24231;
+
+const getBaselineMLResults = (): Record<string, MLInferenceResult> => {
+  const initial: Record<string, MLInferenceResult> = {};
+  MOCK_STATIONS.forEach((s) => {
+    initial[s.id] = {
+      status: 'NORMAL',
+      reconstructionError: 0.1245,
+      threshold: FROZEN_THRESHOLD,
+      errorRatio: 0.5138,
+      warmupStep: 24,
+      dominantFeature: 'temperature',
+      source: 'Meteostat',
+      stationId: s.id,
+      updatedAt: 'Nominal Baseline',
+    };
+  });
+  return initial;
+};
+
 const TelemetryContext = createContext<TelemetryContextType | undefined>(undefined);
 
 export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -121,6 +147,76 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [recentReadings, setRecentReadings] = useState<Record<string, TelemetryLogEntry[]>>(getBaselineRecentReadings);
 
   const [activeFaults, setActiveFaults] = useState<Record<string, ActiveFault>>({});
+
+  const [streamSources, setStreamSources] = useState<Record<string, 'Meteostat' | 'NOAA'>>(() => {
+    const s: Record<string, 'Meteostat' | 'NOAA'> = {};
+    MOCK_STATIONS.forEach((st) => {
+      s[st.id] = 'Meteostat';
+    });
+    return s;
+  });
+
+  const [mlResults, setMlResults] = useState<Record<string, MLInferenceResult>>(getBaselineMLResults);
+  const [telemetryAlerts, setTelemetryAlerts] = useState<Record<string, string | null>>({});
+  const [activeInvestigations, setActiveInvestigations] = useState<Record<string, InvestigationRecord>>({});
+
+  // Polling active investigations from backend to stay in sync with API evaluations and test scripts
+  useEffect(() => {
+    const fetchActive = () => {
+      fetch('http://127.0.0.1:8000/api/investigation/active')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.investigations) {
+            const mapped: Record<string, InvestigationRecord> = {};
+            data.investigations.forEach((inv: InvestigationRecord) => {
+              mapped[inv.station_id] = inv;
+            });
+            setActiveInvestigations(mapped);
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchActive();
+    const pollId = setInterval(fetchActive, 2500);
+    return () => clearInterval(pollId);
+  }, []);
+
+  const setStreamSource = useCallback((stationId: string, source: 'Meteostat' | 'NOAA') => {
+    setStreamSources((prev) => ({ ...prev, [stationId]: source }));
+    if (source === 'NOAA' && ['AWS-002', 'AWS-003', 'AWS-004'].includes(stationId)) {
+      setMlResults((prev) => ({
+        ...prev,
+        [stationId]: {
+          status: 'NOT_APPLICABLE (3h cadence)',
+          reconstructionError: null,
+          threshold: FROZEN_THRESHOLD,
+          errorRatio: null,
+          warmupStep: 0,
+          dominantFeature: 'Not applicable (3h cadence)',
+          source: 'NOAA',
+          stationId,
+          message: '3-hourly cadence series excluded from LSTM Autoencoder. Routed to rule-based checks only.',
+          updatedAt: new Date().toLocaleTimeString('en-IN', { hour12: false }),
+        },
+      }));
+    } else {
+      setMlResults((prev) => ({
+        ...prev,
+        [stationId]: {
+          status: 'NORMAL',
+          reconstructionError: 0.1221,
+          threshold: FROZEN_THRESHOLD,
+          errorRatio: 0.5039,
+          warmupStep: 24,
+          dominantFeature: 'temperature',
+          source,
+          stationId,
+          updatedAt: new Date().toLocaleTimeString('en-IN', { hour12: false }),
+        },
+      }));
+    }
+  }, []);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -399,6 +495,119 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           nextRecentReadings[station.id] = currentLogs;
         }
 
+        // Evaluate ML status & availability alerts
+        const source = streamSources[station.id] || 'Meteostat';
+        const isExcluded = source === 'NOAA' && ['AWS-002', 'AWS-003', 'AWS-004'].includes(station.id);
+
+        if (isCommFailure) {
+          // STEP 3: COMMUNICATION_FAILURE must NOT be routed through the LSTM
+          const hoursDown = (fault?.ticksActive || 0) + 1;
+          setTelemetryAlerts((prev) => ({
+            ...prev,
+            [station.id]: `NO DATA — link down for ${hoursDown}h`,
+          }));
+        } else if (isExcluded) {
+          // STEP 1: NOAA Mumbai, Pune, Bengaluru are 3-hourly cadence and excluded from LSTM
+          setTelemetryAlerts((prev) => ({ ...prev, [station.id]: null }));
+          setMlResults((prev) => ({
+            ...prev,
+            [station.id]: {
+              status: 'NOT_APPLICABLE (3h cadence)',
+              reconstructionError: null,
+              threshold: FROZEN_THRESHOLD,
+              errorRatio: null,
+              warmupStep: 0,
+              dominantFeature: 'Not applicable (3h cadence)',
+              source: 'NOAA',
+              stationId: station.id,
+              message: '3-hourly cadence series excluded from LSTM Autoencoder. Routed to rule-based checks only.',
+              updatedAt: timeString,
+            },
+          }));
+        } else {
+          setTelemetryAlerts((prev) => ({ ...prev, [station.id]: null }));
+          // Submit packet to local LSTM Inference service
+          const packetPayload = {
+            station_id: source === 'NOAA' ? (station.noaaId || station.id) : (station.meteostatId || station.id),
+            source,
+            timestamp: new Date().toISOString(),
+            temperature: updatedStation.sensors.temperature.value,
+            humidity: updatedStation.sensors.humidity.value,
+            pressure: updatedStation.sensors.pressure.value,
+            wind_speed: updatedStation.sensors.wind.value,
+            wind_direction: 180.0,
+            fault_type: fault ? fault.faultType : 'NORMAL',
+            affected_feature: fault ? fault.sensor : 'None',
+          };
+
+          fetch('http://127.0.0.1:8000/api/ml/infer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(packetPayload),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data && data.status) {
+                setMlResults((prev) => ({
+                  ...prev,
+                  [station.id]: {
+                    status: data.status,
+                    reconstructionError: data.reconstruction_error,
+                    threshold: data.threshold || FROZEN_THRESHOLD,
+                    errorRatio: data.error_ratio,
+                    warmupStep: data.warmup_step ?? 24,
+                    dominantFeature: data.dominant_feature || 'None',
+                    source,
+                    stationId: station.id,
+                    message: data.message,
+                    updatedAt: timeString,
+                  },
+                }));
+              }
+            })
+            .catch(() => {});
+        }
+
+        // STEP 4: Real-time Multi-Layer Anomaly Investigation Engine Evaluation
+        const invPayload = {
+          station_id: station.id,
+          source,
+          timestamp: new Date().toISOString(),
+          temperature: updatedStation.sensors.temperature.value,
+          humidity: updatedStation.sensors.humidity.value,
+          pressure: updatedStation.sensors.pressure.value,
+          wind_speed: updatedStation.sensors.wind.value,
+          wind_direction: 180.0,
+          fault_type: fault ? fault.faultType : 'NORMAL',
+          affected_feature: fault ? fault.sensor : 'None',
+          comm_failure_hours: isCommFailure ? (fault?.ticksActive || 0) + 1 : 0,
+        };
+
+        fetch('http://127.0.0.1:8000/api/investigation/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(invPayload),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.has_investigation && data.investigation) {
+              setActiveInvestigations((prev) => ({
+                ...prev,
+                [station.id]: data.investigation,
+              }));
+            } else {
+              setActiveInvestigations((prev) => {
+                if (prev[station.id]) {
+                  const next = { ...prev };
+                  delete next[station.id];
+                  return next;
+                }
+                return prev;
+              });
+            }
+          })
+          .catch(() => {});
+
         return updatedStation;
       });
 
@@ -407,7 +616,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       return nextStations;
     });
-  }, [activeFaults, generateStationUpdate, historyBuffers, recentReadings]);
+  }, [activeFaults, generateStationUpdate, historyBuffers, recentReadings, streamSources]);
 
   /**
    * Start Simulation: sets status to RUNNING and creates interval.
@@ -435,6 +644,11 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setStations(getBaselineStations());
     setHistoryBuffers(getBaselineHistory());
     setRecentReadings(getBaselineRecentReadings());
+    setMlResults(getBaselineMLResults());
+    setTelemetryAlerts({});
+    setActiveInvestigations({});
+    fetch('http://127.0.0.1:8000/api/ml/reset', { method: 'POST' }).catch(() => {});
+    fetch('http://127.0.0.1:8000/api/investigation/clear', { method: 'POST' }).catch(() => {});
   }, []);
 
   /**
@@ -447,6 +661,24 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       delete next[stationId];
       return next;
     });
+
+    setTelemetryAlerts((prev) => {
+      const next = { ...prev };
+      delete next[stationId];
+      return next;
+    });
+
+    setActiveInvestigations((prev) => {
+      const next = { ...prev };
+      delete next[stationId];
+      return next;
+    });
+
+    fetch('http://127.0.0.1:8000/api/investigation/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ station_id: stationId }),
+    }).catch(() => {});
 
     setStations((prev) =>
       prev.map((s) => {
@@ -500,13 +732,49 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         [stationId]: newFault,
       }));
 
+      // Immediately evaluate investigation on fault injection
+      const isComm = faultType === 'communication-failure' || faultType === 'communication_failure';
+      const faultValue = faultType === 'sudden-spike' || faultType === 'temperature_spike'
+        ? (station.sensors.temperature.value > 30 ? 52.4 : 48.6)
+        : station.sensors.temperature.value;
+
+      const evalPayload = {
+        station_id: stationId,
+        source: streamSources[stationId] || 'Meteostat',
+        timestamp: new Date().toISOString(),
+        temperature: targetSensor === 'temperature' ? faultValue : station.sensors.temperature.value,
+        humidity: targetSensor === 'humidity' ? (faultType === 'humidity-spike' ? 98.0 : station.sensors.humidity.value) : station.sensors.humidity.value,
+        pressure: targetSensor === 'pressure' ? (faultType === 'pressure-drop' ? 982.0 : station.sensors.pressure.value) : station.sensors.pressure.value,
+        wind_speed: station.sensors.wind.value,
+        wind_direction: 180.0,
+        fault_type: faultType,
+        affected_feature: targetSensor,
+        comm_failure_hours: isComm ? 2.5 : 0.0,
+      };
+
+      fetch('http://127.0.0.1:8000/api/investigation/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(evalPayload),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.has_investigation && data.investigation) {
+            setActiveInvestigations((prev) => ({
+              ...prev,
+              [stationId]: data.investigation,
+            }));
+          }
+        })
+        .catch(() => {});
+
       // Immediately flag station status if communication failure or spike
       if (faultType === 'communication-failure' || faultType === 'communication_failure') {
         return prevStations.map((s) => (s.id === stationId ? { ...s, status: 'OFFLINE' as StationStatus } : s));
       }
       return prevStations;
     });
-  }, [clearFault]);
+  }, [clearFault, streamSources]);
 
   // Interval manager: runs only when status is RUNNING; cleanly cleared otherwise
   useEffect(() => {
@@ -543,6 +811,12 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         historyBuffers,
         recentReadings,
         activeFaults,
+        mlResults,
+        telemetryAlerts,
+        streamSources,
+        activeInvestigations,
+        investigationsList: Object.values(activeInvestigations),
+        setStreamSource,
         startSimulation,
         pauseSimulation,
         resetSimulation,

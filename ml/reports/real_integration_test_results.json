@@ -1,0 +1,336 @@
+{
+  "TEST_A": {
+    "warmup_progression": "Step 1: WARMING_UP (1/24) ... Step 23: WARMING_UP (23/24)",
+    "valid_steps_count": 7,
+    "min_mse": 0.15044,
+    "max_mse": 0.19536,
+    "mean_mse": 0.1628,
+    "statuses": [
+      "NORMAL",
+      "NORMAL",
+      "NORMAL",
+      "NORMAL",
+      "NORMAL",
+      "NORMAL",
+      "NORMAL"
+    ],
+    "detailed_windows": [
+      {
+        "step": 24,
+        "timestamp": "2025-07-01 23:00:00",
+        "status": "NORMAL",
+        "reconstruction_error": 0.19536,
+        "error_ratio": 0.81,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "step": 25,
+        "timestamp": "2025-07-02 00:00:00",
+        "status": "NORMAL",
+        "reconstruction_error": 0.16456,
+        "error_ratio": 0.68,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "step": 26,
+        "timestamp": "2025-07-02 01:00:00",
+        "status": "NORMAL",
+        "reconstruction_error": 0.1559,
+        "error_ratio": 0.64,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "step": 27,
+        "timestamp": "2025-07-02 02:00:00",
+        "status": "NORMAL",
+        "reconstruction_error": 0.1566,
+        "error_ratio": 0.65,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "step": 28,
+        "timestamp": "2025-07-02 03:00:00",
+        "status": "NORMAL",
+        "reconstruction_error": 0.15044,
+        "error_ratio": 0.62,
+        "dominant_feature": "humidity_roc"
+      },
+      {
+        "step": 29,
+        "timestamp": "2025-07-02 04:00:00",
+        "status": "NORMAL",
+        "reconstruction_error": 0.15442,
+        "error_ratio": 0.64,
+        "dominant_feature": "humidity_roc"
+      },
+      {
+        "step": 30,
+        "timestamp": "2025-07-02 05:00:00",
+        "status": "NORMAL",
+        "reconstruction_error": 0.1623,
+        "error_ratio": 0.67,
+        "dominant_feature": "humidity_roc"
+      }
+    ]
+  },
+  "TEST_B": {
+    "nominal_temp": 34.5,
+    "spiked_temp": 46.5,
+    "status": "ANOMALY",
+    "reconstruction_error": 0.35922,
+    "threshold": 0.24231,
+    "error_ratio": 1.48,
+    "dominant_feature": "temperature_roll_std_3h"
+  },
+  "TEST_C": {
+    "drift_rate": "+0.8\u00b0C/h",
+    "progression": [
+      {
+        "hour": 1,
+        "drift_amount": "+0.8\u00b0C",
+        "nominal_temp": 30.2,
+        "temperature": 31.0,
+        "status": "NORMAL",
+        "mse": 0.16547,
+        "ratio": 0.68,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "hour": 2,
+        "drift_amount": "+1.6\u00b0C",
+        "nominal_temp": 30.0,
+        "temperature": 31.6,
+        "status": "NORMAL",
+        "mse": 0.15707,
+        "ratio": 0.65,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "hour": 3,
+        "drift_amount": "+2.4\u00b0C",
+        "nominal_temp": 31.0,
+        "temperature": 33.4,
+        "status": "NORMAL",
+        "mse": 0.16087,
+        "ratio": 0.66,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "hour": 4,
+        "drift_amount": "+3.2\u00b0C",
+        "nominal_temp": 31.3,
+        "temperature": 34.5,
+        "status": "NORMAL",
+        "mse": 0.15467,
+        "ratio": 0.64,
+        "dominant_feature": "humidity_roc"
+      },
+      {
+        "hour": 5,
+        "drift_amount": "+4.0\u00b0C",
+        "nominal_temp": 32.0,
+        "temperature": 36.0,
+        "status": "NORMAL",
+        "mse": 0.16382,
+        "ratio": 0.68,
+        "dominant_feature": "humidity_roc"
+      },
+      {
+        "hour": 6,
+        "drift_amount": "+4.8\u00b0C",
+        "nominal_temp": 33.0,
+        "temperature": 37.8,
+        "status": "NORMAL",
+        "mse": 0.17396,
+        "ratio": 0.72,
+        "dominant_feature": "humidity_roc"
+      },
+      {
+        "hour": 7,
+        "drift_amount": "+5.6\u00b0C",
+        "nominal_temp": 34.5,
+        "temperature": 40.1,
+        "status": "NORMAL",
+        "mse": 0.15655,
+        "ratio": 0.65,
+        "dominant_feature": "humidity_roc"
+      },
+      {
+        "hour": 8,
+        "drift_amount": "+6.4\u00b0C",
+        "nominal_temp": 35.0,
+        "temperature": 41.4,
+        "status": "NORMAL",
+        "mse": 0.16322,
+        "ratio": 0.67,
+        "dominant_feature": "humidity_roc"
+      }
+    ],
+    "final_status": "NORMAL",
+    "final_mse": 0.16322,
+    "final_ratio": 0.67,
+    "dominant_feature": "humidity_roc"
+  },
+  "TEST_D": {
+    "frozen_value": 29.5,
+    "hours_frozen": 10,
+    "records": [
+      {
+        "hour": 1,
+        "timestamp": "2025-07-02 00:00:00",
+        "natural_temp": 30.2,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.16523,
+        "ratio": 0.68,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "hour": 2,
+        "timestamp": "2025-07-02 01:00:00",
+        "natural_temp": 30.0,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.15591,
+        "ratio": 0.64,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "hour": 3,
+        "timestamp": "2025-07-02 02:00:00",
+        "natural_temp": 31.0,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.15764,
+        "ratio": 0.65,
+        "dominant_feature": "wind_speed_roll_std_3h"
+      },
+      {
+        "hour": 4,
+        "timestamp": "2025-07-02 03:00:00",
+        "natural_temp": 31.3,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.15391,
+        "ratio": 0.64,
+        "dominant_feature": "humidity_roc"
+      },
+      {
+        "hour": 5,
+        "timestamp": "2025-07-02 04:00:00",
+        "natural_temp": 32.0,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.15874,
+        "ratio": 0.66,
+        "dominant_feature": "humidity_roc"
+      },
+      {
+        "hour": 6,
+        "timestamp": "2025-07-02 05:00:00",
+        "natural_temp": 33.0,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.17009,
+        "ratio": 0.7,
+        "dominant_feature": "humidity_roc"
+      },
+      {
+        "hour": 7,
+        "timestamp": "2025-07-02 06:00:00",
+        "natural_temp": 34.5,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.15466,
+        "ratio": 0.64,
+        "dominant_feature": "temperature_roll_std_3h"
+      },
+      {
+        "hour": 8,
+        "timestamp": "2025-07-02 07:00:00",
+        "natural_temp": 35.0,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.16241,
+        "ratio": 0.67,
+        "dominant_feature": "temperature_roll_std_3h"
+      },
+      {
+        "hour": 9,
+        "timestamp": "2025-07-02 08:00:00",
+        "natural_temp": 35.0,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.16332,
+        "ratio": 0.67,
+        "dominant_feature": "temperature_roll_std_3h"
+      },
+      {
+        "hour": 10,
+        "timestamp": "2025-07-02 09:00:00",
+        "natural_temp": 36.4,
+        "frozen_temp": 29.5,
+        "status": "NORMAL",
+        "mse": 0.15096,
+        "ratio": 0.62,
+        "dominant_feature": "temperature_roll_std_3h"
+      }
+    ],
+    "final_status": "NORMAL",
+    "final_mse": 0.15096,
+    "final_ratio": 0.62,
+    "dominant_feature": "temperature_roll_std_3h"
+  },
+  "TEST_E": {
+    "hours_to_recover": 1,
+    "recovered_status": "NORMAL",
+    "recovery_trace": [
+      {
+        "elapsed_hours": 1,
+        "timestamp": "2025-07-02 10:00:00",
+        "status": "NORMAL",
+        "mse": 0.18623,
+        "ratio": 0.77
+      }
+    ]
+  },
+  "TEST_F": {
+    "zero_lstm_calls_during_gap": true,
+    "resumed_status": "WARMING_UP (1/24)",
+    "buffer_reset_confirmed": true,
+    "message": "Buffering hourly packets: 1/24."
+  },
+  "TEST_G": {
+    "all_excluded_not_applicable": true,
+    "zero_lstm_calls": true,
+    "cases": [
+      {
+        "label": "NOAA Mumbai (43057099999)",
+        "station_id": "43057099999",
+        "source": "NOAA",
+        "status": "NOT_APPLICABLE (3h cadence)",
+        "mse": null,
+        "lstm_invocations": 0,
+        "message": "Series (43057099999, NOAA) is 3-hourly cadence and excluded from LSTM Autoencoder. Routed to rule-based checks."
+      },
+      {
+        "label": "NOAA Pune (43063099999)",
+        "station_id": "43063099999",
+        "source": "NOAA",
+        "status": "NOT_APPLICABLE (3h cadence)",
+        "mse": null,
+        "lstm_invocations": 0,
+        "message": "Series (43063099999, NOAA) is 3-hourly cadence and excluded from LSTM Autoencoder. Routed to rule-based checks."
+      },
+      {
+        "label": "NOAA Bengaluru (43295099999)",
+        "station_id": "43295099999",
+        "source": "NOAA",
+        "status": "NOT_APPLICABLE (3h cadence)",
+        "mse": null,
+        "lstm_invocations": 0,
+        "message": "Series (43295099999, NOAA) is 3-hourly cadence and excluded from LSTM Autoencoder. Routed to rule-based checks."
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+source,station_id,station_name,city,state,start_date,end_date,total_records,coverage_percent,temp_missing_percent,humidity_missing_percent,pressure_missing_percent,wind_missing_percent,precip_missing_percent,duplicate_count,suspicious_value_count,quality_class
+Meteostat,43279,Chennai / Minambakkam Intl,Chennai,Tamil Nadu,2023-01-01 00:00:00,2025-12-31 23:00:00,26304,100.0,0.0,0.0,0.0,0.0,2.02,0,0,A
+NOAA ISD,43279099999,Chennai / Minambakkam Intl,Chennai,Tamil Nadu,2023-01-01 00:00:00,2025-08-24 21:30:00,52654,86.38,0.03,0.04,85.84,0.02,96.33,0,1,B
+Meteostat,42809,Kolkata / Dum Dum Intl (Netaji Subhash Chandra Bose),Kolkata,West Bengal,2023-01-01 00:00:00,2025-12-31 23:00:00,26304,100.0,0.0,0.0,0.0,0.0,1.82,0,0,A
+NOAA ISD,42809099999,Kolkata / Dum Dum Intl (Netaji Subhash Chandra Bose),Kolkata,West Bengal,2023-01-01 00:00:00,2025-08-24 21:30:00,52968,86.47,0.03,0.08,85.91,0.04,95.81,33,0,B
+Meteostat,43057,Mumbai / Santacruz Intl (Chhatrapati Shivaji Maharaj),Mumbai,Maharashtra,2023-01-01 00:00:00,2025-12-31 23:00:00,26304,100.0,0.0,0.0,0.0,0.0,1.94,0,1,A
+NOAA ISD,43057099999,Mumbai / Santacruz Intl (Chhatrapati Shivaji Maharaj),Mumbai,Maharashtra,2023-01-01 03:00:00,2025-08-24 15:00:00,3479,13.23,0.03,0.06,0.23,0.0,72.29,0,1,C
+Meteostat,43063,Pune,Pune,Maharashtra,2023-01-01 00:00:00,2025-12-31 23:00:00,26058,99.06,0.0,0.0,0.0,0.0,0.48,0,0,A
+NOAA ISD,43063099999,Pune,Pune,Maharashtra,2023-01-01 00:00:00,2025-08-24 18:00:00,7521,28.59,0.17,0.25,0.32,0.11,69.98,0,0,B
+Meteostat,42647,Ahmedabad / Sardar Vallabhbhai Patel Intl,Ahmedabad,Gujarat,2023-01-01 00:00:00,2025-12-31 23:00:00,26304,100.0,0.0,0.0,0.0,0.0,1.91,0,0,A
+NOAA ISD,42647099999,Ahmedabad / Sardar Vallabhbhai Patel Intl,Ahmedabad,Gujarat,2023-01-01 00:00:00,2025-08-24 21:30:00,51461,85.44,0.03,0.13,85.42,0.11,97.52,0,1,B
+Meteostat,43128,Hyderabad / Begumpet,Hyderabad,Telangana,2023-01-01 00:00:00,2025-12-31 23:00:00,26304,100.0,0.0,0.0,0.0,0.0,1.94,0,0,A
+NOAA ISD,43128099999,Hyderabad / Begumpet,Hyderabad,Telangana,2023-01-01 00:00:00,2025-08-24 21:00:00,33388,66.93,0.02,0.07,77.69,0.03,94.45,0,0,B
+Meteostat,43295,Bengaluru / HAL Airport,Bengaluru,Karnataka,2023-01-01 00:00:00,2025-12-31 23:00:00,25947,98.64,0.0,0.0,0.32,0.0,0.67,0,0,A
+NOAA ISD,43295099999,Bengaluru / HAL Airport,Bengaluru,Karnataka,2023-01-01 00:00:00,2025-08-24 21:00:00,7424,28.22,0.28,0.39,99.88,0.07,71.32,0,1,B

@@ -1,3 +1,4 @@
+import os
 import asyncio
 import json
 import time
@@ -19,6 +20,13 @@ try:
     from .simulation.engine import SimulationEngine
     from .reports import ReportService
     from .services.weather_service import live_weather_service, haversine_km
+    from .ml.lstm_service import lstm_service
+    from .ml.investigation_service import investigation_service
+    from .ml.historical_drift_service import historical_drift_service
+    from .ml.weather_analytics_service import weather_analytics_service
+    from .ml.sensor_health_service import sensor_health_service
+    from .services.maintenance_service import maintenance_service
+    from .services.simulation_service import simulation_service
 except ImportError:
     from models import (
         Station,
@@ -31,6 +39,13 @@ except ImportError:
     from simulation.engine import SimulationEngine
     from reports import ReportService
     from services.weather_service import live_weather_service, haversine_km
+    from ml.lstm_service import lstm_service
+    from ml.investigation_service import investigation_service
+    from ml.historical_drift_service import historical_drift_service
+    from ml.weather_analytics_service import weather_analytics_service
+    from ml.sensor_health_service import sensor_health_service
+    from services.maintenance_service import maintenance_service
+    from services.simulation_service import simulation_service
 
 app = FastAPI(
     title="SkyGuard AI API - MoES / IMD AWS Intelligence",
@@ -91,7 +106,12 @@ async def startup_event():
                         "ai_brief": live_data["ai_brief"],
                         "active_anomalies_count": len(live_data["anomalies"]),
                         "stations": live_data["stations"],
-                        "anomalies": live_data["anomalies"]
+                        "anomalies": live_data["anomalies"],
+                        "ml_status": {
+                            "active_buffers": len(lstm_service.buffers),
+                            "threshold": round(lstm_service.threshold, 5)
+                        },
+                        "active_investigations": investigation_service.get_active_investigations()
                     })
                 else:
                     # In demo mode, tick simulation
@@ -104,7 +124,12 @@ async def startup_event():
                         "kpis": sim.get_network_kpis(),
                         "ai_brief": sim.generate_ai_brief(),
                         "active_anomalies_count": len(sim.active_anomalies),
-                        "latest_readings": readings[:5]
+                        "latest_readings": readings[:5],
+                        "ml_status": {
+                            "active_buffers": len(lstm_service.buffers),
+                            "threshold": round(lstm_service.threshold, 5)
+                        },
+                        "active_investigations": investigation_service.get_active_investigations()
                     })
 
                 if active_websockets:
@@ -655,3 +680,498 @@ def ask_copilot(req: CopilotQueryRequest):
         return {
             "answer": "Operating in SIH Demo Mode. You can ask about the 55°C spike, or click 'Reset Baseline' to return to live Open-Meteo weather data."
         }
+
+
+# =====================================================================
+# LSTM Autoencoder Inference Endpoints
+# =====================================================================
+
+class MLInferPacket(BaseModel):
+    station_id: str
+    source: str = "Meteostat"
+    timestamp: Optional[str] = None
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+    pressure: Optional[float] = None
+    wind_speed: Optional[float] = None
+    wind_direction: Optional[float] = 0.0
+    fault_type: Optional[str] = None
+    affected_feature: Optional[str] = None
+
+
+@app.post("/api/ml/infer")
+def ml_infer_packet(packet: MLInferPacket):
+    """
+    Submits a telemetry packet to the LSTM Autoencoder rolling buffer.
+    Returns status: NORMAL, ANOMALY, WARMING_UP (n/24), or NOT_APPLICABLE (3h cadence).
+    """
+    result = lstm_service.process_packet(
+        packet.dict(),
+        fault_type=packet.fault_type,
+        affected_feature=packet.affected_feature
+    )
+    return result
+
+
+@app.get("/api/ml/threshold")
+def ml_get_threshold():
+    """Returns the frozen anomaly threshold and model feature list."""
+    return {
+        "threshold": round(lstm_service.threshold, 5),
+        "method": "percentile_grid_search_max_f1",
+        "validation_f1": 0.339,
+        "feature_count": len(lstm_service.feature_list),
+        "features": lstm_service.feature_list,
+        "disclaimer": "Test recall ~26.5%, Precision ~43%, F1 ~0.33. Misses expected especially for TEMP_DRIFT (11.5%) and TEMP_SPIKE (14.7%)."
+    }
+
+
+@app.get("/api/ml/status")
+def ml_get_status(station_id: Optional[str] = None, source: str = "Meteostat"):
+    """Returns buffer and inference status for a station or all buffers."""
+    if station_id:
+        key = (str(station_id), source)
+        buf = lstm_service.buffers.get(key, [])
+        is_excluded = key in lstm_service.excluded_series or str(station_id) in lstm_service.excluded_stations
+        return {
+            "station_id": station_id,
+            "source": source,
+            "is_excluded": is_excluded,
+            "buffer_length": len(buf),
+            "status": "NOT_APPLICABLE (3h cadence)" if is_excluded else ("NORMAL" if len(buf) >= 24 else f"WARMING_UP ({len(buf)}/24)"),
+            "threshold": round(lstm_service.threshold, 5)
+        }
+    else:
+        status_map = {}
+        for (sid, src), buf in lstm_service.buffers.items():
+            status_map[f"{sid}_{src}"] = {
+                "station_id": sid,
+                "source": src,
+                "buffer_length": len(buf),
+                "status": "NORMAL" if len(buf) >= 24 else f"WARMING_UP ({len(buf)}/24)"
+            }
+        return {
+            "active_buffers": len(lstm_service.buffers),
+            "buffers": status_map,
+            "threshold": round(lstm_service.threshold, 5)
+        }
+
+
+@app.post("/api/ml/reset")
+def ml_reset_buffers(station_id: Optional[str] = None, source: str = "Meteostat"):
+    """Resets the rolling buffer for a station or all stations."""
+    if station_id:
+        lstm_service.reset_buffer(station_id, source, "API Reset Request")
+    else:
+        for (sid, src) in list(lstm_service.buffers.keys()):
+            lstm_service.reset_buffer(sid, src, "Global Reset Request")
+    return {"success": True, "message": "ML buffers reset successfully"}
+
+
+@app.get("/api/ml/logs")
+def ml_get_recent_logs(limit: int = 50):
+    """Returns recent lines from the append-only inference log."""
+    log_path = lstm_service.log_file_path
+    if not os.path.exists(log_path):
+        return {"logs": [], "total": 0}
+    
+    logs = []
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    logs.append(json.loads(line))
+    except Exception as e:
+        return {"logs": [], "error": str(e)}
+    
+    return {
+        "log_file": log_path,
+        "total": len(logs),
+        "recent": logs[-limit:]
+    }
+
+
+# =====================================================================
+# Anomaly Investigation & Forensic Triage Endpoints
+# =====================================================================
+
+class InvestigationEvaluationRequest(BaseModel):
+    station_id: str
+    source: str = "Meteostat"
+    timestamp: Optional[str] = None
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+    pressure: Optional[float] = None
+    wind_speed: Optional[float] = None
+    wind_direction: Optional[float] = 0.0
+    fault_type: Optional[str] = None
+    affected_feature: Optional[str] = None
+    comm_failure_hours: Optional[float] = 0.0
+
+
+@app.get("/api/investigation/active")
+def api_get_active_investigations():
+    """Returns all currently active investigation records across the network."""
+    investigations = investigation_service.get_active_investigations()
+    return {
+        "total": len(investigations),
+        "investigations": investigations
+    }
+
+
+@app.get("/api/investigation/{station_id}")
+def api_get_station_investigation(station_id: str):
+    """Returns the active investigation record for a specific station, or null."""
+    record = investigation_service.get_station_investigation(station_id)
+    return {
+        "station_id": station_id,
+        "investigation": record
+    }
+
+
+@app.post("/api/investigation/evaluate")
+def api_evaluate_investigation(req: InvestigationEvaluationRequest):
+    """
+    Evaluates an incoming telemetry packet across ML sequence error, deterministic rule checks,
+    external weather, and spatial consensus. Returns an InvestigationRecord if triggered.
+    """
+    packet = req.dict()
+    record = investigation_service.evaluate_telemetry(
+        packet,
+        comm_failure_hours=req.comm_failure_hours or 0.0
+    )
+    return {
+        "has_investigation": record is not None,
+        "investigation": record
+    }
+
+
+@app.post("/api/investigation/clear")
+def api_clear_investigation(station_id: Optional[str] = None):
+    """Clears active investigations for a station or all stations."""
+    if station_id:
+        investigation_service.clear_investigation(station_id)
+    else:
+        investigation_service.clear_all()
+    return {"success": True, "message": "Investigations cleared successfully"}
+
+
+# =====================================================================
+# Historical Drift & Trend Analysis Endpoints
+# =====================================================================
+
+class HistoricalDriftTestRequest(BaseModel):
+    station_id: str = "AWS-003"
+    sensor: str = "temperature"
+    time_range: str = "30d"
+    source: str = "Meteostat"
+    injected_drift: Optional[Dict[str, Any]] = None
+    injected_spike: Optional[Dict[str, Any]] = None
+
+
+@app.get("/api/historical/drift")
+def api_get_historical_drift(
+    station_id: str = "AWS-003",
+    sensor: str = "temperature",
+    time_range: str = "30d",
+    source: str = "Meteostat",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
+    """
+    Computes real historical trend, moving average, long-term baseline,
+    and 4-tier drift classification anchored to 2025-12-31 23:00:00.
+    """
+    result = historical_drift_service.analyze_drift(
+        station_id=station_id,
+        sensor=sensor,
+        time_range=time_range,
+        source=source,
+        start_date=start_date,
+        end_date=end_date
+    )
+    return result
+
+
+@app.post("/api/historical/test-inject")
+def api_test_injected_historical_drift(req: HistoricalDriftTestRequest):
+    """
+    Simulates drift or transient spike injection over a real historical window
+    without mutating the underlying CSV on disk.
+    """
+    result = historical_drift_service.analyze_drift(
+        station_id=req.station_id,
+        sensor=req.sensor,
+        time_range=req.time_range,
+        source=req.source,
+        test_injected_drift=req.injected_drift,
+        test_injected_spike=req.injected_spike
+    )
+    return result
+
+
+# =====================================================================
+# Weather Analytics Endpoints
+# =====================================================================
+
+class MultiStationCompareRequest(BaseModel):
+    station_ids: List[str] = ["AWS-003", "AWS-004"]
+    sensor: str = "temperature"
+    time_range: str = "30d"
+    source: str = "Meteostat"
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
+
+@app.get("/api/analytics/weather")
+def api_get_weather_analytics(
+    station_id: str = "AWS-003",
+    sensor: str = "temperature",
+    time_range: str = "30d",
+    source: str = "Meteostat",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
+    """
+    Returns comprehensive weather analytics including KPIs, trend series,
+    percentile distribution, diurnal & monthly patterns, precipitation analysis,
+    live vs historical context, insights, and data quality.
+    """
+    return weather_analytics_service.get_weather_analytics(
+        station_id=station_id,
+        sensor=sensor,
+        time_range=time_range,
+        source=source,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+
+@app.get("/api/analytics/correlations")
+def api_get_weather_correlations(
+    station_id: str = "AWS-003",
+    time_range: str = "30d",
+    source: str = "Meteostat",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
+    """
+    Returns bivariate correlations (Pearson r, R2, OLS fit, scatter points)
+    for Temp<->Humidity, Temp<->Pressure, Wind<->Pressure, Temp<->Precip.
+    """
+    return weather_analytics_service.get_correlations(
+        station_id=station_id,
+        time_range=time_range,
+        source=source,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+
+@app.post("/api/analytics/compare")
+def api_compare_weather_stations(req: MultiStationCompareRequest):
+    """
+    Compares 2+ stations across time series and comparative metrics
+    for the selected sensor and window.
+    """
+    return weather_analytics_service.compare_stations(
+        station_ids=req.station_ids,
+        sensor=req.sensor,
+        time_range=req.time_range,
+        source=req.source,
+        start_date=req.start_date,
+        end_date=req.end_date
+    )
+
+
+# =====================================================================
+# Sensor Health Matrix & Maintenance Endpoints
+# =====================================================================
+
+class TicketCreateRequest(BaseModel):
+    station_id: str
+    station_name: Optional[str] = None
+    station_location: Optional[str] = None
+    sensor: str
+    issue: Optional[str] = None
+    priority: Optional[str] = "HIGH"
+    status: Optional[str] = "OPEN"
+    assigned_to: Optional[str] = None
+    evidence: Optional[Dict[str, Any]] = None
+    recommended_action: Optional[str] = None
+    notes: Optional[List[Dict[str, Any]]] = None
+
+
+class TicketUpdateRequest(BaseModel):
+    status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    notes: Optional[List[Dict[str, Any]]] = None
+    note: Optional[str] = None
+    author: Optional[str] = "Operator"
+    resolution: Optional[str] = None
+
+
+@app.get("/api/sensor-health/matrix")
+def api_get_sensor_health_matrix():
+    """
+    Returns full Station x Sensor Health Matrix (7 stations x 5 sensors),
+    along with Station Overall Health and live summary KPIs.
+    """
+    return sensor_health_service.get_station_health_matrix()
+
+
+@app.get("/api/sensor-health/sensor")
+def api_get_single_sensor_health(station_id: str = "AWS-003", sensor: str = "temperature"):
+    """
+    Returns granular diagnostic record for a single probe including
+    'Why this status?', active investigation root cause, drift metrics, and event timeline.
+    """
+    return sensor_health_service.get_single_sensor_detail(station_id=station_id, sensor=sensor)
+
+
+@app.get("/api/maintenance/tickets")
+def api_get_maintenance_tickets(
+    status: Optional[str] = None,
+    station_id: Optional[str] = None,
+    sensor: Optional[str] = None,
+    priority: Optional[str] = None
+):
+    """
+    Returns persistent list of maintenance work orders filtered by status/station/sensor/priority,
+    plus live maintenance KPIs (open, high priority, in progress, awaiting verification, resolved, overdue).
+    """
+    tickets = maintenance_service.list_tickets(status=status, station_id=station_id, sensor=sensor, priority=priority)
+    kpis = maintenance_service.get_kpis()
+    return {
+        "kpis": kpis,
+        "tickets": tickets
+    }
+
+
+@app.post("/api/maintenance/tickets")
+def api_create_maintenance_ticket(req: TicketCreateRequest):
+    """
+    Creates a new maintenance ticket with automatic priority/evidence mapping.
+    """
+    ticket = maintenance_service.create_ticket(req.dict())
+    return ticket
+
+
+@app.patch("/api/maintenance/tickets/{ticket_id}")
+def api_update_maintenance_ticket(ticket_id: str, req: TicketUpdateRequest):
+    """
+    Updates maintenance ticket status, assignee, notes, or resolution.
+    Moving status to RESOLVED flags ticket into AWAITING VERIFICATION per the Verification Rule.
+    """
+    updated = maintenance_service.update_ticket(ticket_id, req.dict(exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"Ticket {ticket_id} not found")
+    return updated
+
+
+@app.post("/api/maintenance/tickets/{ticket_id}/verify")
+def api_verify_maintenance_ticket(ticket_id: str):
+    """
+    Step 7 & 10 Verification Endpoint:
+    Re-evaluates live sensor health and telemetry for the ticket's station and sensor.
+    - If nominal, closes ticket and restores sensor to HEALTHY.
+    - If fault is still active, verification fails and sensor remains in non-healthy status.
+    """
+    ticket = maintenance_service.get_ticket(ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail=f"Ticket {ticket_id} not found")
+
+    station_id = ticket["station_id"]
+    sensor = ticket["sensor"]
+
+    sensor_detail = sensor_health_service.get_single_sensor_detail(station_id, sensor)
+    current_sensor_status = sensor_detail["status"]
+    active_invs = investigation_service.get_active_investigations()
+
+    res = maintenance_service.verify_ticket(
+        ticket_id=ticket_id,
+        active_investigations=active_invs,
+        current_sensor_status=current_sensor_status
+    )
+    return res
+
+
+# =====================================================================
+# Full Pipeline Simulation Lab Endpoints
+# =====================================================================
+
+class SimulationStartRequest(BaseModel):
+    station_id: str = "AWS-003"
+    sensor: str = "temperature"
+    scenario: str = "temperature-spike"
+    magnitude: Optional[float] = None
+    duration: int = 12
+    noise_level: str = "MEDIUM"
+    auto_warmup: bool = True
+
+
+class SimulationWarmupRequest(BaseModel):
+    station_id: str = "AWS-003"
+    source: str = "Meteostat"
+
+
+@app.post("/api/simulation/warmup")
+def api_warmup_simulation_buffer(req: SimulationWarmupRequest):
+    """
+    Pre-seeds live LSTM buffer with last 24 real consecutive hourly readings
+    from the historical dataset without modifying CSV files.
+    """
+    return simulation_service.warmup_station_buffer(req.station_id, req.source)
+
+
+@app.post("/api/simulation/start")
+def api_start_simulation(req: SimulationStartRequest):
+    """
+    Executes full pipeline testbench:
+    Simulation -> Telemetry -> ML Inference -> Alert -> Triage -> Spatial -> Sensor Health -> Ticket.
+    """
+    return simulation_service.start_simulation(
+        station_id=req.station_id,
+        sensor=req.sensor,
+        scenario=req.scenario,
+        magnitude=req.magnitude,
+        duration=req.duration,
+        noise_level=req.noise_level,
+        auto_warmup=req.auto_warmup
+    )
+
+
+@app.post("/api/simulation/clear")
+def api_clear_simulation_fault():
+    """
+    Restores live simulated stream to nominal without modifying historical files or model weights.
+    """
+    return simulation_service.clear_fault()
+
+
+@app.post("/api/simulation/reset-lab")
+def api_reset_simulation_lab():
+    """
+    Resets the simulation harness, clears active fault and in-memory states.
+    """
+    return simulation_service.reset_simulation()
+
+
+@app.get("/api/simulation/status")
+def api_get_simulation_status():
+    """
+    Returns current active simulation state, pipeline checklist, and live result summary.
+    """
+    return simulation_service.get_status()
+
+
+@app.get("/api/simulation/history")
+def api_get_simulation_history():
+    """
+    Returns list of past simulation runs with pass/fail verdicts and detection mechanisms.
+    """
+    return {
+        "history": simulation_service.get_history()
+    }
+

@@ -1,0 +1,375 @@
+{
+  "total_merged": 286914,
+  "met_rows": 183525,
+  "noaa_rows": 103389,
+  "overall_missingness": {
+    "total": 286914,
+    "precipitation": 93584,
+    "pressure": 62626,
+    "wind_direction": 24715,
+    "wind_speed": 53,
+    "temperature": 65,
+    "humidity": 59
+  },
+  "by_city_missingness": {
+    "Ahmedabad_Meteostat": {
+      "total": 26304,
+      "temperature": 0,
+      "humidity": 0,
+      "pressure": 0,
+      "wind_speed": 0,
+      "wind_direction": 0,
+      "precipitation": 502
+    },
+    "Ahmedabad_NOAA": {
+      "total": 22517,
+      "temperature": 10,
+      "humidity": 3,
+      "pressure": 15015,
+      "wind_speed": 21,
+      "wind_direction": 3757,
+      "precipitation": 21240
+    },
+    "Bengaluru_Meteostat": {
+      "total": 25947,
+      "temperature": 0,
+      "humidity": 0,
+      "pressure": 83,
+      "wind_speed": 0,
+      "wind_direction": 2,
+      "precipitation": 174
+    },
+    "Bengaluru_NOAA": {
+      "total": 7424,
+      "temperature": 21,
+      "humidity": 29,
+      "pressure": 7415,
+      "wind_speed": 5,
+      "wind_direction": 1265,
+      "precipitation": 5295
+    },
+    "Chennai_Meteostat": {
+      "total": 26304,
+      "temperature": 0,
+      "humidity": 0,
+      "pressure": 0,
+      "wind_speed": 0,
+      "wind_direction": 76,
+      "precipitation": 531
+    },
+    "Chennai_NOAA": {
+      "total": 22775,
+      "temperature": 14,
+      "humidity": 0,
+      "pressure": 15318,
+      "wind_speed": 8,
+      "wind_direction": 3574,
+      "precipitation": 20841
+    },
+    "Hyderabad_Meteostat": {
+      "total": 26304,
+      "temperature": 0,
+      "humidity": 0,
+      "pressure": 0,
+      "wind_speed": 0,
+      "wind_direction": 157,
+      "precipitation": 510
+    },
+    "Hyderabad_NOAA": {
+      "total": 16879,
+      "temperature": 1,
+      "humidity": 2,
+      "pressure": 9430,
+      "wind_speed": 4,
+      "wind_direction": 5388,
+      "precipitation": 15026
+    },
+    "Kolkata_Meteostat": {
+      "total": 26304,
+      "temperature": 0,
+      "humidity": 1,
+      "pressure": 0,
+      "wind_speed": 0,
+      "wind_direction": 12,
+      "precipitation": 478
+    },
+    "Kolkata_NOAA": {
+      "total": 22794,
+      "temperature": 5,
+      "humidity": 3,
+      "pressure": 15333,
+      "wind_speed": 7,
+      "wind_direction": 4587,
+      "precipitation": 20574
+    },
+    "Mumbai_Meteostat": {
+      "total": 26304,
+      "temperature": 0,
+      "humidity": 0,
+      "pressure": 0,
+      "wind_speed": 0,
+      "wind_direction": 1014,
+      "precipitation": 510
+    },
+    "Mumbai_NOAA": {
+      "total": 3479,
+      "temperature": 1,
+      "humidity": 2,
+      "pressure": 8,
+      "wind_speed": 0,
+      "wind_direction": 1813,
+      "precipitation": 2515
+    },
+    "Pune_Meteostat": {
+      "total": 26058,
+      "temperature": 0,
+      "humidity": 0,
+      "pressure": 0,
+      "wind_speed": 0,
+      "wind_direction": 0,
+      "precipitation": 125
+    },
+    "Pune_NOAA": {
+      "total": 7521,
+      "temperature": 13,
+      "humidity": 19,
+      "pressure": 24,
+      "wind_speed": 8,
+      "wind_direction": 3070,
+      "precipitation": 5263
+    }
+  },
+  "consistency": {
+    "Ahmedabad": {
+      "co_occurring_hours": 22517,
+      "metrics": {
+        "temperature": {
+          "valid_pairs": 22507,
+          "mean_diff": -0.04424845603589995,
+          "std_diff": 0.3862928312145083,
+          "viol_count": 236,
+          "viol_pct": 1.0485626693917447
+        },
+        "humidity": {
+          "valid_pairs": 22514,
+          "mean_diff": 0.011548369903171506,
+          "std_diff": 1.4534648500560508,
+          "viol_count": 81,
+          "viol_pct": 0.35977613929110774
+        },
+        "pressure": {
+          "valid_pairs": 7502,
+          "mean_diff": -0.031711543588376474,
+          "std_diff": 0.18718110668438268,
+          "viol_count": 1,
+          "viol_pct": 0.013329778725673154
+        },
+        "wind_speed": {
+          "valid_pairs": 22496,
+          "mean_diff": 0.16532094594594596,
+          "std_diff": 0.6975934004841969,
+          "viol_count": 28,
+          "viol_pct": 0.12446657183499288
+        }
+      }
+    },
+    "Bengaluru": {
+      "co_occurring_hours": 7424,
+      "metrics": {
+        "temperature": {
+          "valid_pairs": 7403,
+          "mean_diff": -0.044914223963258136,
+          "std_diff": 0.373188998282064,
+          "viol_count": 68,
+          "viol_pct": 0.9185465351884371
+        },
+        "humidity": {
+          "valid_pairs": 7395,
+          "mean_diff": -0.259161595672752,
+          "std_diff": 2.4884416188826517,
+          "viol_count": 142,
+          "viol_pct": 1.9202163624070319
+        },
+        "pressure": {
+          "valid_pairs": 9,
+          "mean_diff": -4.077777777777783,
+          "std_diff": 11.533697275353923,
+          "viol_count": 1,
+          "viol_pct": 11.11111111111111
+        },
+        "wind_speed": {
+          "valid_pairs": 7419,
+          "mean_diff": 0.2381803477557622,
+          "std_diff": 0.9389422309709912,
+          "viol_count": 72,
+          "viol_pct": 0.9704811969268096
+        }
+      }
+    },
+    "Chennai": {
+      "co_occurring_hours": 22775,
+      "metrics": {
+        "temperature": {
+          "valid_pairs": 22761,
+          "mean_diff": -0.001190633100478889,
+          "std_diff": 0.059889377777167734,
+          "viol_count": 2,
+          "viol_pct": 0.008786960151135715
+        },
+        "humidity": {
+          "valid_pairs": 22775,
+          "mean_diff": 0.020895718990121055,
+          "std_diff": 0.4226353849343163,
+          "viol_count": 3,
+          "viol_pct": 0.013172338090010978
+        },
+        "pressure": {
+          "valid_pairs": 7457,
+          "mean_diff": -0.0005900496178087672,
+          "std_diff": 0.03450332233184682,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        },
+        "wind_speed": {
+          "valid_pairs": 22767,
+          "mean_diff": 0.14780910967628597,
+          "std_diff": 0.7014911524560791,
+          "viol_count": 52,
+          "viol_pct": 0.22840075547942199
+        }
+      }
+    },
+    "Hyderabad": {
+      "co_occurring_hours": 16879,
+      "metrics": {
+        "temperature": {
+          "valid_pairs": 16878,
+          "mean_diff": 0.009687166725915394,
+          "std_diff": 0.3876489693539563,
+          "viol_count": 94,
+          "viol_pct": 0.5569380258324446
+        },
+        "humidity": {
+          "valid_pairs": 16877,
+          "mean_diff": 0.0031877703383306074,
+          "std_diff": 2.001364239606154,
+          "viol_count": 136,
+          "viol_pct": 0.8058304200983588
+        },
+        "pressure": {
+          "valid_pairs": 7449,
+          "mean_diff": 0.18766277352664795,
+          "std_diff": 0.8715392377225089,
+          "viol_count": 332,
+          "viol_pct": 4.4569740904819435
+        },
+        "wind_speed": {
+          "valid_pairs": 16875,
+          "mean_diff": 0.18121955555555555,
+          "std_diff": 0.8810324482710437,
+          "viol_count": 71,
+          "viol_pct": 0.4207407407407407
+        }
+      }
+    },
+    "Kolkata": {
+      "co_occurring_hours": 22794,
+      "metrics": {
+        "temperature": {
+          "valid_pairs": 22789,
+          "mean_diff": -0.0001097020492342797,
+          "std_diff": 0.06674734143741576,
+          "viol_count": 3,
+          "viol_pct": 0.013164245908113563
+        },
+        "humidity": {
+          "valid_pairs": 22790,
+          "mean_diff": -0.016423870118472846,
+          "std_diff": 0.5032480088158563,
+          "viol_count": 6,
+          "viol_pct": 0.026327336551118914
+        },
+        "pressure": {
+          "valid_pairs": 7461,
+          "mean_diff": -9.382120359201789e-05,
+          "std_diff": 0.008103458526837373,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        },
+        "wind_speed": {
+          "valid_pairs": 22787,
+          "mean_diff": 0.10570983455479001,
+          "std_diff": 0.4765934781972306,
+          "viol_count": 4,
+          "viol_pct": 0.01755386843375609
+        }
+      }
+    },
+    "Mumbai": {
+      "co_occurring_hours": 3479,
+      "metrics": {
+        "temperature": {
+          "valid_pairs": 3478,
+          "mean_diff": 0.0,
+          "std_diff": 0.0,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        },
+        "humidity": {
+          "valid_pairs": 3477,
+          "mean_diff": 0.00549324129997092,
+          "std_diff": 0.2948240478330506,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        },
+        "pressure": {
+          "valid_pairs": 3471,
+          "mean_diff": 0.0,
+          "std_diff": 0.0,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        },
+        "wind_speed": {
+          "valid_pairs": 3479,
+          "mean_diff": 0.0013624604771486164,
+          "std_diff": 0.003878802637272518,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        }
+      }
+    },
+    "Pune": {
+      "co_occurring_hours": 7521,
+      "metrics": {
+        "temperature": {
+          "valid_pairs": 7508,
+          "mean_diff": 0.0,
+          "std_diff": 0.0,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        },
+        "humidity": {
+          "valid_pairs": 7502,
+          "mean_diff": 0.010583844308184352,
+          "std_diff": 0.2891948306273377,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        },
+        "pressure": {
+          "valid_pairs": 7497,
+          "mean_diff": 0.0,
+          "std_diff": 0.0,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        },
+        "wind_speed": {
+          "valid_pairs": 7513,
+          "mean_diff": 0.001372288034074253,
+          "std_diff": 0.003475527386181546,
+          "viol_count": 0,
+          "viol_pct": 0.0
+        }
+      }
+    }
+  }
+}

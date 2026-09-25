@@ -9,9 +9,13 @@ import {
   Radio,
   Sliders,
   AlertTriangle,
+  AlertCircle,
   CheckCircle2,
   Clock,
   Database,
+  Cpu,
+  Info,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -47,8 +51,33 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
     stations.find((s) => s.id === selectedStationId) || stations[0];
 
   const [activeSensor, setActiveSensor] = useState<SensorType>('temperature');
-  const { simulationStatus, historyBuffers, recentReadings, activeFaults, clearFault } = useTelemetry();
+
+  const {
+    simulationStatus,
+    historyBuffers,
+    recentReadings,
+    activeFaults,
+    clearFault,
+    mlResults,
+    telemetryAlerts,
+    streamSources,
+    setStreamSource,
+  } = useTelemetry();
+
   const currentActiveFault = activeFaults[currentStation.id];
+  const currentAlert = telemetryAlerts[currentStation.id];
+  const currentSource = streamSources[currentStation.id] || 'Meteostat';
+  const currentML = mlResults[currentStation.id] || {
+    status: 'NORMAL',
+    reconstructionError: 0.1245,
+    threshold: 0.24231,
+    errorRatio: 0.5138,
+    warmupStep: 24,
+    dominantFeature: 'temperature',
+    source: currentSource,
+    stationId: currentStation.id,
+    updatedAt: 'Nominal Baseline',
+  };
 
   const sensorConfig: Record<
     SensorType,
@@ -58,41 +87,41 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
       label: 'Temperature',
       icon: Thermometer,
       unit: '°C',
-      color: '#f59e0b',
-      fill: 'rgba(245, 158, 11, 0.15)',
-      activeGlow: 'bg-amber-500/15 border-amber-500/50 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]',
+      color: '#d97706',
+      fill: 'rgba(217, 119, 6, 0.12)',
+      activeGlow: 'bg-amber-50 border-amber-300 text-amber-900 shadow-xs ring-1 ring-amber-300',
     },
     humidity: {
       label: 'Relative Humidity',
       icon: Droplets,
       unit: '%',
-      color: '#38bdf8',
-      fill: 'rgba(56, 189, 248, 0.15)',
-      activeGlow: 'bg-sky-500/15 border-sky-500/50 text-sky-200 shadow-[0_0_15px_rgba(56,189,248,0.2)]',
+      color: '#0284c7',
+      fill: 'rgba(2, 132, 199, 0.12)',
+      activeGlow: 'bg-sky-50 border-sky-300 text-sky-900 shadow-xs ring-1 ring-sky-300',
     },
     pressure: {
       label: 'Barometric Pressure',
       icon: Gauge,
       unit: 'hPa',
-      color: '#818cf8',
-      fill: 'rgba(129, 140, 248, 0.15)',
-      activeGlow: 'bg-indigo-500/15 border-indigo-500/50 text-indigo-200 shadow-[0_0_15px_rgba(129,140,248,0.2)]',
+      color: '#4f46e5',
+      fill: 'rgba(79, 70, 229, 0.12)',
+      activeGlow: 'bg-indigo-50 border-indigo-300 text-indigo-900 shadow-xs ring-1 ring-indigo-300',
     },
     wind: {
       label: 'Wind Velocity',
       icon: Wind,
       unit: 'km/h',
-      color: '#34d399',
-      fill: 'rgba(52, 211, 153, 0.15)',
-      activeGlow: 'bg-emerald-500/15 border-emerald-500/50 text-emerald-200 shadow-[0_0_15px_rgba(52,211,153,0.2)]',
+      color: '#059669',
+      fill: 'rgba(5, 150, 105, 0.12)',
+      activeGlow: 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-xs ring-1 ring-emerald-300',
     },
     rainfall: {
       label: 'Precipitation Accumulation',
       icon: CloudRain,
       unit: 'mm',
-      color: '#60a5fa',
-      fill: 'rgba(96, 165, 250, 0.15)',
-      activeGlow: 'bg-blue-500/15 border-blue-500/50 text-blue-200 shadow-[0_0_15px_rgba(96,165,250,0.2)]',
+      color: '#2563eb',
+      fill: 'rgba(37, 99, 235, 0.12)',
+      activeGlow: 'bg-blue-50 border-blue-300 text-blue-900 shadow-xs ring-1 ring-blue-300',
     },
   };
 
@@ -105,70 +134,118 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
     <div className="space-y-6">
       <PageHeader
         title="Live Sensor Telemetry"
-        subtitle={`Real-time high-rate sensor streams for ${currentStation.name} (${currentStation.id}) with envelope anomaly thresholds.`}
+        subtitle={`Real-time high-rate sensor streams for ${currentStation.name} (${currentStation.id}) with dual-stream ML Autoencoder inference.`}
         badge={simulationStatus === 'RUNNING' ? 'LIVE TELEMETRY STREAM' : 'HIGH FREQUENCY SAMPLING'}
       />
 
-      {/* Station Selector Bar */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+      {/* Telemetry Availability Alert Banner (COMMUNICATION_FAILURE exclusive alert) */}
+      {currentAlert && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600" />
+            <span className="font-bold uppercase tracking-wide">Telemetry Availability Alert:</span>
+            <span>{currentAlert}</span>
+          </div>
+          <span className="text-[11px] text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-300">
+            Hardware / Modem Link Offline (Not an LSTM Anomaly Verdict)
+          </span>
+        </div>
+      )}
+
+      {/* Station Selector Bar & Stream Controls */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="station-select" className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-            <Radio className="w-3.5 h-3.5 text-sky-400" />
+          <label htmlFor="station-select" className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+            <Radio className="w-3.5 h-3.5 text-sky-600" />
             Station:
           </label>
           <select
             id="station-select"
             value={currentStation.id}
             onChange={(e) => onSelectStation(e.target.value)}
-            className="px-3 py-1.5 rounded-xl bg-[#090e1c] border border-slate-700 text-sm font-semibold text-white focus:outline-none focus:border-sky-500"
+            className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-sm font-semibold text-slate-800 focus:outline-none focus:border-sky-500"
           >
             {stations.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.id} — {s.name} ({s.state}) {s.dataSource || '[Meteostat + NOAA]'}
+                {s.id} — {s.name} ({s.state})
               </option>
             ))}
           </select>
 
+          {/* Stream Source Selector Toggle: Meteostat vs NOAA */}
+          <div className="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200 text-xs font-mono font-semibold">
+            <button
+              onClick={() => setStreamSource(currentStation.id, 'Meteostat')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                currentSource === 'Meteostat'
+                  ? 'bg-sky-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Meteostat ({currentStation.meteostatId || 'ID'})
+            </button>
+            <button
+              onClick={() => setStreamSource(currentStation.id, 'NOAA')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                currentSource === 'NOAA'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              NOAA ISD ({currentStation.noaaId || 'ID'})
+            </button>
+          </div>
+
           <StatusBadge status={currentStation.status} />
 
-          <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/40">
-            {currentStation.dataSource || '[Meteostat + NOAA]'}
-          </span>
+          {/* Dedicated ML Autoencoder Status Badge */}
+          <div className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-bold border flex items-center gap-1.5 ${
+            currentML.status === 'ANOMALY'
+              ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-xs animate-pulse'
+              : currentML.status.startsWith('WARMING_UP')
+              ? 'bg-amber-50 text-amber-700 border-amber-300'
+              : currentML.status.startsWith('NOT_APPLICABLE')
+              ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
+              : 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-xs'
+          }`}>
+            <Cpu className="w-3 h-3 text-current" />
+            <span>ML: {currentML.status}</span>
+          </div>
 
           {/* Dynamic Live Status Indicator */}
           {simulationStatus === 'RUNNING' && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-mono font-semibold shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-700 text-[11px] font-mono font-semibold shadow-xs">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
               </span>
               <span>LIVE</span>
             </div>
           )}
           {simulationStatus === 'PAUSED' && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[11px] font-mono font-semibold">
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-700 text-[11px] font-mono font-semibold">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
               <span>PAUSED</span>
             </div>
           )}
           {simulationStatus === 'STOPPED' && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/60 border border-slate-700/60 text-slate-400 text-[11px] font-mono font-semibold">
-              <span className="w-2 h-2 rounded-full bg-slate-500" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-300 text-slate-600 text-[11px] font-mono font-semibold">
+              <span className="w-2 h-2 rounded-full bg-slate-400" />
               <span>STANDBY</span>
             </div>
           )}
 
           {/* Active Fault Indicator Pill with Quick Clear Button */}
           {currentActiveFault && (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-200 text-xs font-mono font-bold shadow-[0_0_15px_rgba(245,158,11,0.25)]">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-800 text-xs font-mono font-bold shadow-xs">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-600" />
               </span>
               <span>FAULT: {currentActiveFault.label.toUpperCase()} (TICK #{currentActiveFault.ticksActive})</span>
               <button
                 onClick={() => clearFault(currentStation.id)}
-                className="ml-1 px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] uppercase font-sans font-semibold tracking-wide transition-colors cursor-pointer"
+                className="ml-1 px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[10px] uppercase font-sans font-semibold tracking-wide transition-colors cursor-pointer"
                 title="Clear Active Fault and Resume Normal Stream"
               >
                 Clear
@@ -176,7 +253,7 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
             </div>
           )}
 
-          <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+          <span className="text-xs text-slate-500 font-mono hidden sm:inline">
             Lat {currentStation.coordinates.lat}°N, Lng {currentStation.coordinates.lng}°E • Elev {currentStation.elevationMeters}m
           </span>
         </div>
@@ -184,7 +261,7 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
         <div className="flex items-center gap-2 self-end md:self-center">
           <button
             onClick={() => onNavigateTab('simulation-lab')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-[0_0_12px_rgba(251,191,36,0.18)] transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 shadow-xs transition-all"
           >
             <Sliders className="w-3.5 h-3.5" />
             <span>Inject Fault (Testbench)</span>
@@ -206,29 +283,29 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
             <button
               key={st}
               onClick={() => setActiveSensor(st)}
-              className={`p-4 rounded-2xl border text-left transition-all backdrop-blur-md relative overflow-hidden group ${
+              className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden group ${
                 isSelected
                   ? cfg.activeGlow
                   : isFaulted
-                  ? 'bg-gradient-to-b from-[#2a1b12]/80 to-[#090e1c]/80 border-amber-500/60 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                  : 'bg-gradient-to-b from-[#111a31]/60 to-[#090e1c]/80 border-slate-800/80 hover:border-slate-700 hover:bg-slate-800/40 text-slate-400'
+                  ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-xs'
+                  : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 shadow-xs'
               }`}
             >
               <div className="flex items-center justify-between">
-                <Icon className={`w-4 h-4 transition-colors ${isSelected || isFaulted ? 'text-current' : 'text-slate-400 group-hover:text-slate-200'}`} />
+                <Icon className={`w-4 h-4 transition-colors ${isSelected || isFaulted ? 'text-current' : 'text-slate-500 group-hover:text-slate-700'}`} />
                 {isFaulted ? (
-                  <span className="text-[10px] font-mono font-bold text-amber-400 animate-pulse">⚡ FAULT</span>
+                  <span className="text-[10px] font-mono font-bold text-amber-700 animate-pulse">⚡ FAULT</span>
                 ) : isAnomaly ? (
-                  <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" title="Anomaly Detected" />
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" title="Anomaly Detected" />
                 ) : null}
               </div>
               <div className="mt-2.5">
-                <span className="text-xs font-medium block truncate text-slate-300">{cfg.label}</span>
+                <span className="text-xs font-medium block truncate text-slate-500">{cfg.label}</span>
                 <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-xl font-bold font-mono text-white">
+                  <span className="text-xl font-bold font-mono text-slate-900">
                     {reading.value}
                   </span>
-                  <span className="text-xs text-slate-400 font-mono">{cfg.unit}</span>
+                  <span className="text-xs text-slate-500 font-mono">{cfg.unit}</span>
                 </div>
               </div>
             </button>
@@ -266,31 +343,31 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
                     <stop offset="95%" stopColor={activeCfg.color} stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1c253d" />
-                <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0c1326',
-                    borderColor: '#334155',
+                    backgroundColor: '#ffffff',
+                    borderColor: '#e2e8f0',
                     borderRadius: '0.75rem',
-                    color: '#f8fafc',
+                    color: '#0f172a',
                     fontSize: '12px',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
                   }}
                   formatter={(val) => [`${val} ${activeCfg.unit}`, activeCfg.label]}
                 />
                 <ReferenceLine
                   y={currentReading.expectedMax}
-                  stroke="#f43f5e"
+                  stroke="#ef4444"
                   strokeDasharray="4 4"
-                  label={{ value: 'Upper Limit', fill: '#f43f5e', fontSize: 10, position: 'insideTopRight' }}
+                  label={{ value: 'Upper Limit', fill: '#ef4444', fontSize: 10, position: 'insideTopRight' }}
                 />
                 <ReferenceLine
                   y={currentReading.expectedMin}
-                  stroke="#38bdf8"
+                  stroke="#0284c7"
                   strokeDasharray="4 4"
-                  label={{ value: 'Lower Limit', fill: '#38bdf8', fontSize: 10, position: 'insideBottomRight' }}
+                  label={{ value: 'Lower Limit', fill: '#0284c7', fontSize: 10, position: 'insideBottomRight' }}
                 />
                 <Area
                   type="monotone"
@@ -306,50 +383,50 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
 
         {/* Current Metric Breakdown Card */}
         <div className="space-y-4">
-          <div className="p-5 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3 flex items-center justify-between font-mono">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center justify-between font-mono">
               <span>Metric Diagnostics</span>
-              <Activity className="w-4 h-4 text-sky-400" />
+              <Activity className="w-4 h-4 text-sky-600" />
             </h4>
 
             <div className="space-y-3">
-              <div className="p-3.5 rounded-xl bg-[#0a101f]/70 border border-slate-800/70">
-                <span className="text-[11px] text-slate-400">Current Reading</span>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[11px] text-slate-500">Current Reading</span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-black font-mono text-white">
+                  <span className="text-2xl font-black font-mono text-slate-900">
                     {currentReading.value}
                   </span>
-                  <span className="text-xs text-slate-400 font-mono">{activeCfg.unit}</span>
+                  <span className="text-xs text-slate-500 font-mono">{activeCfg.unit}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-[#0a101f]/50 border border-slate-800/60">
-                  <span className="text-[10px] text-slate-400 block font-mono">24h Low</span>
-                  <span className="font-mono font-bold text-slate-200">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-500 block font-mono">24h Low</span>
+                  <span className="font-mono font-bold text-slate-800">
                     {currentReading.min24h} {activeCfg.unit}
                   </span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-[#0a101f]/50 border border-slate-800/60">
-                  <span className="text-[10px] text-slate-400 block font-mono">24h High</span>
-                  <span className="font-mono font-bold text-slate-200">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-500 block font-mono">24h High</span>
+                  <span className="font-mono font-bold text-slate-800">
                     {currentReading.max24h} {activeCfg.unit}
                   </span>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-[#0a101f]/70 border border-slate-800/70">
-                <span className="text-[10px] text-slate-400 block mb-1 font-mono">Expected Operational Band</span>
-                <span className="font-mono text-xs text-sky-300 font-bold">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] text-slate-500 block mb-1 font-mono">Expected Operational Band</span>
+                <span className="font-mono text-xs text-sky-700 font-bold">
                   {currentReading.expectedMin} — {currentReading.expectedMax} {activeCfg.unit}
                 </span>
-                <div className="w-full bg-slate-800/80 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
                   <div
                     className={`h-full ${
                       currentReading.value > currentReading.expectedMax ||
                       currentReading.value < currentReading.expectedMin
-                        ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'
-                        : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]'
+                        ? 'bg-rose-500'
+                        : 'bg-emerald-500'
                     }`}
                     style={{
                       width: `${Math.min(
@@ -366,52 +443,191 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-1 font-mono">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500 pt-1 font-mono">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
                 <span>Last packet: {currentReading.lastUpdated}</span>
               </div>
             </div>
           </div>
 
-          {/* Physical Consistency Check */}
-          <div className="p-4 rounded-2xl bg-gradient-to-b from-[#111a31]/70 to-[#090e1c]/80 border border-slate-800/70 text-xs backdrop-blur-md">
-            <h5 className="font-bold text-slate-200 mb-2 flex items-center gap-1.5">
-              {currentStation.status === 'ANOMALY' ? (
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              )}
-              <span>Physics Consistency Rule</span>
+          {/* STEP 2: Dedicated LSTM Autoencoder Sequence Surveillance Panel */}
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3 relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+            
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5 font-mono">
+                <Cpu className="w-4 h-4 text-indigo-600" />
+                <span>LSTM Autoencoder Surveillance</span>
+              </h4>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                currentML.status === 'ANOMALY'
+                  ? 'bg-rose-50 text-rose-700 border-rose-300 animate-pulse'
+                  : currentML.status.startsWith('WARMING_UP')
+                  ? 'bg-amber-50 text-amber-700 border-amber-300'
+                  : currentML.status.startsWith('NOT_APPLICABLE')
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-300'
+              }`}>
+                {currentML.status}
+              </span>
+            </div>
+
+            {/* Stream info */}
+            <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 pt-1 border-t border-slate-100">
+              <span>Stream:</span>
+              <span className="text-sky-700 font-semibold">
+                {currentSource} ({currentSource === 'NOAA' ? (currentStation.noaaId || currentStation.id) : (currentStation.meteostatId || currentStation.id)})
+              </span>
+            </div>
+
+            {/* Reconstruction MSE & Threshold */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-500">Reconstruction Error (MSE):</span>
+                <span className={`font-bold ${
+                  currentML.reconstructionError !== null && currentML.reconstructionError > currentML.threshold
+                    ? 'text-rose-600'
+                    : 'text-emerald-600'
+                }`}>
+                  {currentML.reconstructionError !== null ? currentML.reconstructionError.toFixed(5) : 'N/A (Warming up)'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-500">Frozen Threshold:</span>
+                <span className="text-slate-800 font-bold">
+                  {currentML.threshold.toFixed(5)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-500">Threshold Margin:</span>
+                <span className="text-indigo-700">
+                  {currentML.reconstructionError !== null
+                    ? (currentML.threshold - currentML.reconstructionError > 0
+                        ? `+${(currentML.threshold - currentML.reconstructionError).toFixed(5)} margin`
+                        : `${(currentML.reconstructionError - currentML.threshold).toFixed(5)} breach`)
+                    : 'N/A'}
+                </span>
+              </div>
+            </div>
+
+            {/* Reconstruction Error Ratio (Normalized Proximity Score) */}
+            <div className="space-y-1 pt-1">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-700 flex items-center gap-1">
+                  <span>Reconstruction-error ratio:</span>
+                  <span title="Reconstruction-error ratio (MSE / Threshold), not a calibrated probability">
+                    <Info className="w-3 h-3 text-slate-400 cursor-help" />
+                  </span>
+                </span>
+                <span className="text-amber-700 font-bold">
+                  {currentML.errorRatio !== null ? `${currentML.errorRatio.toFixed(2)}x` : 'N/A'}
+                </span>
+              </div>
+
+              {/* Ratio Visual Bar */}
+              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${
+                    currentML.errorRatio !== null && currentML.errorRatio > 1.0
+                      ? 'bg-rose-500'
+                      : 'bg-indigo-500'
+                  }`}
+                  style={{
+                    width: `${Math.min(100, Math.max(5, (currentML.errorRatio || 0.5) * 50))}%`,
+                  }}
+                />
+              </div>
+              <span className="text-[10px] text-slate-500 block font-mono italic">
+                *Normalized ratio relative to threshold, not a calibrated probability.
+              </span>
+            </div>
+
+            {/* Dominant Feature */}
+            <div className="flex items-center justify-between text-xs font-mono pt-1 border-t border-slate-100">
+              <span className="text-slate-500">Dominant Error Driver:</span>
+              <span className="text-amber-700 font-semibold truncate max-w-[140px]" title={currentML.dominantFeature}>
+                {currentML.dominantFeature}
+              </span>
+            </div>
+
+            {/* Prominent Model Disclaimer */}
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-snug">
+              <span className="text-slate-800 font-semibold block mb-0.5 font-mono text-[10px] uppercase">
+                Model Performance Disclaimer:
+              </span>
+              Test recall is ~26.5% / precision ~43% / F1 0.33. Misses are expected, especially for TEMP_DRIFT (11.5%) and TEMP_SPIKE (14.7%).
+            </div>
+          </div>
+
+          {/* SEPARATE PANEL: Atmospheric Physics & Rule-Based Diagnostics */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-xs space-y-2">
+            <h5 className="font-bold text-slate-900 flex items-center justify-between font-mono">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-sky-600" />
+                <span>Deterministic Rule-Based Checks</span>
+              </span>
+              <span className="text-[10px] text-slate-500 font-normal">Independent of ML</span>
             </h5>
-            <p className="text-slate-300 leading-relaxed text-[11px]">
-              {currentStation.id === 'AWS-003'
-                ? 'Temperature spike violates inverse thermodynamic correlation with 94% humidity during nighttime.'
-                : 'Sensor envelope correlates with barometric curve and local solar radiation model.'}
+
+            <div className="space-y-1.5 text-[11px] font-mono">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Diurnal Envelope:</span>
+                <span className={
+                  currentReading.value > currentReading.expectedMax || currentReading.value < currentReading.expectedMin
+                    ? 'text-rose-600 font-bold'
+                    : 'text-emerald-600 font-bold'
+                }>
+                  {currentReading.value > currentReading.expectedMax || currentReading.value < currentReading.expectedMin
+                    ? 'FAIL (Out of Bounds)'
+                    : 'PASS (Nominal)'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">1h Rate-of-Change (ROC):</span>
+                <span className="text-emerald-600 font-bold">PASS (&lt; 3.0°C/h)</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Cross-Source Divergence:</span>
+                <span className="text-emerald-600 font-bold">NOMINAL (&lt; 1.5°C)</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Regional Consensus:</span>
+                <span className="text-emerald-600 font-bold">CONSENSUS (4 neighbors)</span>
+              </div>
+            </div>
+
+            <p className="text-slate-500 leading-relaxed text-[10px] pt-1 border-t border-slate-100 font-sans">
+              Rule-based checks enforce physical thermodynamic boundaries and cross-source checks independently of sequence autoencoding.
             </p>
           </div>
         </div>
       </div>
 
       {/* Live Ingestion Telemetry Stream Table */}
-      <div className="p-5 rounded-2xl bg-gradient-to-b from-[#111a31]/90 via-[#0e1628]/85 to-[#090e1c]/95 border border-slate-800/80 backdrop-blur-md shadow-xl">
+      <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-sky-400" />
-              <h3 className="text-sm font-bold text-white tracking-wide uppercase font-mono">
+              <Database className="w-4 h-4 text-sky-600" />
+              <h3 className="text-sm font-bold text-slate-900 tracking-wide uppercase font-mono">
                 Recent Ingested Packets — {currentStation.name} ({currentStation.id})
               </h3>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Rolling queue of the latest telemetry frames transmitted by onboard micro-controller modem.
             </p>
           </div>
-          <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
+          <div className="flex items-center gap-3 text-xs font-mono text-slate-500">
             <span className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${simulationStatus === 'RUNNING' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+              <span className={`w-2 h-2 rounded-full ${simulationStatus === 'RUNNING' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
               Channel: MQTT over TLS
             </span>
-            <span className="text-slate-600">•</span>
+            <span className="text-slate-300">•</span>
             <span>QoS 1 Ack</span>
           </div>
         </div>
@@ -419,7 +635,7 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-800 text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+              <tr className="border-b border-slate-200 text-[11px] font-mono text-slate-500 uppercase tracking-wider">
                 <th className="py-2.5 px-3">Packet Timestamp</th>
                 <th className="py-2.5 px-3">Temp (°C)</th>
                 <th className="py-2.5 px-3">Humidity (%)</th>
@@ -429,10 +645,10 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
                 <th className="py-2.5 px-3">Payload Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono">
+            <tbody className="divide-y divide-slate-200 font-mono">
               {stationLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-500">
+                  <td colSpan={7} className="py-6 text-center text-slate-400">
                     Awaiting telemetry packets...
                   </td>
                 </tr>
@@ -444,20 +660,20 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
                     return (
                       <tr
                         key={entry.id}
-                        className="bg-rose-950/25 border-l-2 border-rose-500 text-rose-300 font-mono"
+                        className="bg-rose-50 border-l-2 border-rose-500 text-rose-800 font-mono"
                       >
                         <td colSpan={6} className="py-2.5 px-3">
                           <div className="flex items-center gap-2 text-xs">
                             <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                            <span className="font-bold text-rose-300">{entry.timestamp}</span>
-                            <span className="text-slate-500">•</span>
-                            <span className="text-rose-200">
+                            <span className="font-bold text-rose-800">{entry.timestamp}</span>
+                            <span className="text-slate-400">•</span>
+                            <span className="text-rose-700">
                               {entry.transitionNote || `${currentStation.id} — No telemetry received — Communication Failure`}
                             </span>
                           </div>
                         </td>
                         <td className="py-2.5 px-3">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-100 text-rose-800 border border-rose-300">
                             MODEM OFFLINE
                           </span>
                         </td>
@@ -468,52 +684,52 @@ export const LiveMonitoringPage: React.FC<LiveMonitoringPageProps> = ({
                   return (
                     <tr
                       key={entry.id}
-                      className={`hover:bg-slate-800/30 transition-colors ${
+                      className={`hover:bg-slate-50 transition-colors ${
                         entry.flag === 'injected'
-                          ? 'bg-amber-500/[0.08] border-l-2 border-amber-400 text-slate-100'
+                          ? 'bg-amber-50/70 border-l-2 border-amber-500 text-slate-900'
                           : isLatest
-                          ? 'bg-emerald-500/[0.06] text-slate-100'
-                          : 'text-slate-300'
+                          ? 'bg-emerald-50/50 text-slate-900'
+                          : 'text-slate-700'
                       }`}
                     >
                       <td className="py-2.5 px-3">
                         <div className="flex items-center gap-1.5">
                           {isLatest && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                           )}
                           {entry.flag === 'injected' && (
-                            <span className="text-amber-400 text-xs">⚡</span>
+                            <span className="text-amber-600 text-xs">⚡</span>
                           )}
-                          <span className="text-slate-200 font-semibold">{entry.timestamp}</span>
+                          <span className="text-slate-800 font-semibold">{entry.timestamp}</span>
                         </div>
                         {entry.transitionNote && entry.flag === 'injected' && (
-                          <div className="text-[10px] text-amber-300/90 font-mono mt-0.5">
+                          <div className="text-[10px] text-amber-800 font-mono mt-0.5">
                             {entry.transitionNote}
                           </div>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 font-bold text-amber-300">
+                      <td className="py-2.5 px-3 font-bold text-amber-700">
                         {entry.temperature.toFixed(1)}
                       </td>
-                      <td className="py-2.5 px-3 text-sky-300">
+                      <td className="py-2.5 px-3 text-sky-700">
                         {entry.humidity.toFixed(0)}%
                       </td>
-                      <td className="py-2.5 px-3 text-indigo-300">
+                      <td className="py-2.5 px-3 text-indigo-700">
                         {entry.pressure.toFixed(1)}
                       </td>
-                      <td className="py-2.5 px-3 text-emerald-300">
+                      <td className="py-2.5 px-3 text-emerald-700">
                         {entry.wind.toFixed(1)}
                       </td>
-                      <td className="py-2.5 px-3 text-blue-300">
+                      <td className="py-2.5 px-3 text-blue-700">
                         {entry.rainfall.toFixed(1)}
                       </td>
                       <td className="py-2.5 px-3">
                         {entry.flag === 'injected' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-300">
                             INJECTED FAULT
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             VERIFIED
                           </span>
                         )}

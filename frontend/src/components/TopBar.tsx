@@ -127,7 +127,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
             </span>
             <span className="text-[10px] font-mono font-bold text-amber-800 tracking-wider">
-              SIH DEMO MODE
+              DEMO MODE
             </span>
           </div>
         ) : (
@@ -214,7 +214,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </nav>
       )}
 
-      {/* Right Controls: Clock, Sync, Exit Demo, Audio, Copilot, SIH Demo */}
+      {/* Right Controls: Clock, Sync, Exit Demo, Audio, Copilot, Demo Suite */}
       <div className="flex items-center gap-2">
         <div className="hidden lg:flex items-center gap-1.5 text-[11px] font-mono text-slate-500 bg-slate-100/80 px-2.5 py-1 rounded-lg border border-slate-200">
           <Clock className="w-3 h-3 text-slate-400" />
@@ -266,10 +266,10 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <button
           onClick={onOpenDemo}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs shadow-2xs transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-xs border border-sky-500 transition"
         >
           <Zap className="w-3.5 h-3.5 fill-white" />
-          <span>SIH DEMO</span>
+          <span>DEMO SUITE</span>
         </button>
       </div>
     </header>
