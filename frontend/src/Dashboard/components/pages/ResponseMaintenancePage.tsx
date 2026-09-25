@@ -24,6 +24,7 @@ import type {
   MaintenanceTicketsResponse,
   SensorType
 } from '../../types/dashboard.types';
+import { API_BASE } from '../../../services/api';
 
 interface ResponseMaintenancePageProps {
   onNavigateTab?: (tab: DashboardTab) => void;
@@ -67,7 +68,7 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
 
   const fetchTickets = useCallback(async () => {
     try {
-      const res = await fetch('/api/maintenance/tickets');
+      const res = await fetch(`${API_BASE}/maintenance/tickets`);
       if (res.ok) {
         const data: MaintenanceTicketsResponse = await res.json();
         setTickets(data.tickets || []);
@@ -88,7 +89,7 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
     try {
-      const res = await fetch(`/api/maintenance/tickets/${ticketId}`, {
+      const res = await fetch(`${API_BASE}/maintenance/tickets/${ticketId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -113,7 +114,7 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
     setVerifyingId(ticketId);
     setVerificationFeedback(null);
     try {
-      const res = await fetch(`/api/maintenance/tickets/${ticketId}/verify`, {
+      const res = await fetch(`${API_BASE}/maintenance/tickets/${ticketId}/verify`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -158,7 +159,7 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
         ],
       };
 
-      const res = await fetch('/api/maintenance/tickets', {
+      const res = await fetch(`${API_BASE}/maintenance/tickets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -177,7 +178,7 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
   const handleAddNote = async (ticketId: string) => {
     if (!newNoteText.trim()) return;
     try {
-      const res = await fetch(`/api/maintenance/tickets/${ticketId}`, {
+      const res = await fetch(`${API_BASE}/maintenance/tickets/${ticketId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

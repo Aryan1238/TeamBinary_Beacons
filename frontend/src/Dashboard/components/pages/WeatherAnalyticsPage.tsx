@@ -52,6 +52,7 @@ import type {
   WeatherCorrelationResponse,
   WeatherStationCompareResponse,
 } from '../../types/dashboard.types';
+import { API_BASE } from '../../../services/api';
 
 interface WeatherAnalyticsPageProps {
   stations: AWSStation[];
@@ -129,8 +130,8 @@ export const WeatherAnalyticsPage: React.FC<WeatherAnalyticsPageProps> = ({
     setLoading(true);
     setError(null);
     try {
-      let url = `http://127.0.0.1:8000/api/analytics/weather?station_id=${selectedStationId}&sensor=${selectedSensor}&time_range=${timeRange}&source=${source}`;
-      let corrUrl = `http://127.0.0.1:8000/api/analytics/correlations?station_id=${selectedStationId}&time_range=${timeRange}&source=${source}`;
+      let url = `${API_BASE}/analytics/weather?station_id=${selectedStationId}&sensor=${selectedSensor}&time_range=${timeRange}&source=${source}`;
+      let corrUrl = `${API_BASE}/analytics/correlations?station_id=${selectedStationId}&time_range=${timeRange}&source=${source}`;
       if (timeRange === 'custom') {
         url += `&start_date=${startDate}&end_date=${endDate}`;
         corrUrl += `&start_date=${startDate}&end_date=${endDate}`;
@@ -147,7 +148,7 @@ export const WeatherAnalyticsPage: React.FC<WeatherAnalyticsPageProps> = ({
       }
 
       if (compareStations && selectedCompareIds.length >= 2) {
-        const compRes = await fetch('http://127.0.0.1:8000/api/analytics/compare', {
+        const compRes = await fetch(`${API_BASE}/analytics/compare`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

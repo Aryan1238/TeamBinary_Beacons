@@ -27,6 +27,7 @@ import type {
   StationHealthMatrixRow,
   SensorHealthMatrixResponse
 } from '../../types/dashboard.types';
+import { API_BASE } from '../../../services/api';
 
 interface SensorHealthPageProps {
   stations: AWSStation[];
@@ -74,7 +75,7 @@ export const SensorHealthPage: React.FC<SensorHealthPageProps> = ({
 
   const fetchMatrix = useCallback(async () => {
     try {
-      const res = await fetch('/api/sensor-health/matrix');
+      const res = await fetch(`${API_BASE}/sensor-health/matrix`);
       if (res.ok) {
         const data = await res.json();
         setMatrixData(data);
@@ -94,7 +95,7 @@ export const SensorHealthPage: React.FC<SensorHealthPageProps> = ({
 
   const handleOpenDetail = async (stationId: string, sensor: SensorType) => {
     try {
-      const res = await fetch(`/api/sensor-health/sensor?station_id=${stationId}&sensor=${sensor}`);
+      const res = await fetch(`${API_BASE}/sensor-health/sensor?station_id=${stationId}&sensor=${sensor}`);
       if (res.ok) {
         const detail = await res.json();
         setSelectedSensorDetail(detail);
@@ -135,7 +136,7 @@ export const SensorHealthPage: React.FC<SensorHealthPageProps> = ({
         ]
       };
 
-      const res = await fetch('/api/maintenance/tickets', {
+      const res = await fetch(`${API_BASE}/maintenance/tickets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

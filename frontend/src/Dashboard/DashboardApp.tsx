@@ -16,6 +16,7 @@ import { SimulationLabPage } from './components/pages/SimulationLabPage';
 import type { DashboardTab, AnomalyAlert } from './types/dashboard.types';
 import { TelemetryProvider, useTelemetry } from './context/TelemetryContext';
 import { investigationToAlert } from './utils/investigationUtils';
+import { API_BASE } from '../services/api';
 
 interface DashboardAppProps {
   onNavigateHome?: () => void;
@@ -42,7 +43,7 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
 
   const fetchTicketsCount = useCallback(async () => {
     try {
-      const res = await fetch('/api/maintenance/tickets');
+      const res = await fetch(`${API_BASE}/maintenance/tickets`);
       if (res.ok) {
         const data = await res.json();
         setOpenTicketsCount(data?.kpis?.open_tickets ?? 0);

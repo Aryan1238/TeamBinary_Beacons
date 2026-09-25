@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { MOCK_STATIONS, MOCK_24H_HISTORY, HistoryPoint } from '../data/mockStations';
 import type { AWSStation, SensorType, StationStatus, MLInferenceResult, InvestigationRecord } from '../types/dashboard.types';
+import { API_BASE } from '../../services/api';
 
 export type SimulationStatus = 'STOPPED' | 'RUNNING' | 'PAUSED';
 
@@ -163,7 +164,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Polling active investigations from backend to stay in sync with API evaluations and test scripts
   useEffect(() => {
     const fetchActive = () => {
-      fetch('http://127.0.0.1:8000/api/investigation/active')
+      fetch(`${API_BASE}/investigation/active`)
         .then((res) => res.json())
         .then((data) => {
           if (data && data.investigations) {
@@ -540,7 +541,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             affected_feature: fault ? fault.sensor : 'None',
           };
 
-          fetch('http://127.0.0.1:8000/api/ml/infer', {
+          fetch(`${API_BASE}/ml/infer`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(packetPayload),
@@ -583,7 +584,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           comm_failure_hours: isCommFailure ? (fault?.ticksActive || 0) + 1 : 0,
         };
 
-        fetch('http://127.0.0.1:8000/api/investigation/evaluate', {
+        fetch(`${API_BASE}/investigation/evaluate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(invPayload),
@@ -647,8 +648,8 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setMlResults(getBaselineMLResults());
     setTelemetryAlerts({});
     setActiveInvestigations({});
-    fetch('http://127.0.0.1:8000/api/ml/reset', { method: 'POST' }).catch(() => {});
-    fetch('http://127.0.0.1:8000/api/investigation/clear', { method: 'POST' }).catch(() => {});
+    fetch(`${API_BASE}/ml/reset`, { method: 'POST' }).catch(() => {});
+    fetch(`${API_BASE}/investigation/clear`, { method: 'POST' }).catch(() => {});
   }, []);
 
   /**
@@ -674,7 +675,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return next;
     });
 
-    fetch('http://127.0.0.1:8000/api/investigation/clear', {
+    fetch(`${API_BASE}/investigation/clear`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ station_id: stationId }),
@@ -752,7 +753,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         comm_failure_hours: isComm ? 2.5 : 0.0,
       };
 
-      fetch('http://127.0.0.1:8000/api/investigation/evaluate', {
+      fetch(`${API_BASE}/investigation/evaluate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(evalPayload),

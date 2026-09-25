@@ -30,6 +30,7 @@ import {
 import { PageHeader } from '../common/PageHeader';
 import { ChartWrapper } from '../common/ChartWrapper';
 import type { AWSStation, DashboardTab, HistoricalDriftResponse } from '../../types/dashboard.types';
+import { API_BASE } from '../../../services/api';
 
 interface HistoricalAnalysisPageProps {
   stations: AWSStation[];
@@ -125,7 +126,7 @@ export const HistoricalAnalysisPage: React.FC<HistoricalAnalysisPageProps> = ({
     setLoading(true);
     setError(null);
     try {
-      let url = `http://127.0.0.1:8000/api/historical/drift?station_id=${selectedStationId}&sensor=${selectedSensor}&time_range=${timeRange}&source=${source}`;
+      let url = `${API_BASE}/historical/drift?station_id=${selectedStationId}&sensor=${selectedSensor}&time_range=${timeRange}&source=${source}`;
       if (timeRange === 'custom') {
         url += `&start_date=${startDate}&end_date=${endDate}`;
       }
@@ -135,7 +136,7 @@ export const HistoricalAnalysisPage: React.FC<HistoricalAnalysisPageProps> = ({
       setDriftData(data);
 
       if (comparePeer && peerStationId) {
-        let peerUrl = `http://127.0.0.1:8000/api/historical/drift?station_id=${peerStationId}&sensor=${selectedSensor}&time_range=${timeRange}&source=${source}`;
+        let peerUrl = `${API_BASE}/historical/drift?station_id=${peerStationId}&sensor=${selectedSensor}&time_range=${timeRange}&source=${source}`;
         if (timeRange === 'custom') {
           peerUrl += `&start_date=${startDate}&end_date=${endDate}`;
         }

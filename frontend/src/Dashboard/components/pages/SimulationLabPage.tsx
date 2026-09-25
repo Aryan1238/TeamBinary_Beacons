@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '../common/PageHeader';
 import type { DashboardTab, SensorType } from '../../types/dashboard.types';
+import { API_BASE } from '../../../services/api';
 
 interface SimulationLabPageProps {
   onNavigateTab?: (tab: DashboardTab) => void;
@@ -71,7 +72,7 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/simulation/status');
+      const res = await fetch(`${API_BASE}/simulation/status`);
       if (res.ok) {
         const data = await res.json();
         setActiveSimulation(data.simulation);
@@ -81,7 +82,7 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
 
   const fetchHistory = useCallback(async () => {
     try {
-      const res = await fetch('/api/simulation/history');
+      const res = await fetch(`${API_BASE}/simulation/history`);
       if (res.ok) {
         const data = await res.json();
         setTestHistory(data.history || []);
@@ -101,7 +102,7 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
 
   const handleWarmup = async () => {
     try {
-      const res = await fetch('/api/simulation/warmup', {
+      const res = await fetch(`${API_BASE}/simulation/warmup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ station_id: stationId, source: currentStation.source }),
@@ -129,7 +130,7 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
       else if (sc === 'wind-anomaly') mag = 22.0;
       else if (sc === 'communication-failure') mag = 2.5;
 
-      const res = await fetch('/api/simulation/start', {
+      const res = await fetch(`${API_BASE}/simulation/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,7 +159,7 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
 
   const handleClearFault = async () => {
     try {
-      const res = await fetch('/api/simulation/clear', { method: 'POST' });
+      const res = await fetch(`${API_BASE}/simulation/clear`, { method: 'POST' });
       if (res.ok) {
         setActiveSimulation(null);
         setActionFeedback('Simulated fault cleared. Live telemetry normalized.');
@@ -168,7 +169,7 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
 
   const handleResetLab = async () => {
     try {
-      const res = await fetch('/api/simulation/reset-lab', { method: 'POST' });
+      const res = await fetch(`${API_BASE}/simulation/reset-lab`, { method: 'POST' });
       if (res.ok) {
         setActiveSimulation(null);
         setWarmupStatus(null);

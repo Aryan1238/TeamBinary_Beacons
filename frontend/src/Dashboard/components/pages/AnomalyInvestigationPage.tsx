@@ -31,6 +31,7 @@ import { ChartWrapper } from '../common/ChartWrapper';
 import type { AnomalyAlert, DashboardTab, InvestigationRecord } from '../../types/dashboard.types';
 import { useTelemetry } from '../../context/TelemetryContext';
 import { MOCK_24H_HISTORY } from '../../data/mockStations';
+import { API_BASE } from '../../../services/api';
 
 interface AnomalyInvestigationPageProps {
   alert?: AnomalyAlert | null;
@@ -64,7 +65,7 @@ export const AnomalyInvestigationPage: React.FC<AnomalyInvestigationPageProps> =
         recommended_action: inv?.recommended_action || 'Inspect physical probe and recalibrate sensor.',
         assigned_to: 'Regional Field Unit'
       };
-      const res = await fetch('/api/maintenance/tickets', {
+      const res = await fetch(`${API_BASE}/maintenance/tickets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

@@ -1,6 +1,6 @@
 import { Station, AnomalyRecord, TelemetryReading, SensorHealthMetric, MaintenanceTicket, NetworkKPIs, IncidentReport, SystemStatus } from '../types';
 
-const API_BASE = 'https://teambinary-beacons.onrender.com/api';
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // 15 Real Indian Locations
 export const REAL_INDIAN_LOCATIONS: Array<{ id: string; name: string; state: string; region: string; lat: number; lon: number; elevation: number }> = [
