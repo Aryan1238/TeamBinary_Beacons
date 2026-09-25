@@ -14,7 +14,9 @@
 
 - **Frontend (GitHub Pages)**: Live & Operational  
   👉 **[https://aryan1238.github.io/TeamBinary_Beacons/](https://aryan1238.github.io/TeamBinary_Beacons/)**
-- **Backend (Render Blueprint)**: Infrastructure prepared via `render.yaml` & `Procfile` (FastAPI + LSTM autoencoder + Climatological drift services ready for 1-click deployment on Render free tier).
+- **Backend (Render Cloud)**: Live, Connected & Operational  
+  👉 **[https://teambinary-beacons.onrender.com/health](https://teambinary-beacons.onrender.com/health)** (API Base: `https://teambinary-beacons.onrender.com/api`)
+- **System Integration**: Full-stack verified end-to-end (REST endpoints + WebSocket live telemetry stream active).
 
 
 ---
