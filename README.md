@@ -6,18 +6,16 @@
 **Problem Statement ID:** 26073  
 **Event:** Smart India Hackathon (SIH)  
 
-[![Deploy Frontend to GitHub Pages](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml)  
-The application is fully functional end-to-end (frontend + backend live).
+[![Deploy Frontend to GitHub Pages](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml)
 
 ---
 
-## 🌐 Live Demo
+## 🌐 Live Demo & Deployment Status
 
-[![Deploy Frontend to GitHub Pages](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Aryan1238/TeamBinary_Beacons/actions/workflows/deploy-pages.yml)  
-The application is fully functional end-to-end (frontend + backend live).
+- **Frontend (GitHub Pages)**: Live & Operational  
+  👉 **[https://aryan1238.github.io/TeamBinary_Beacons/](https://aryan1238.github.io/TeamBinary_Beacons/)**
+- **Backend (Render Blueprint)**: Infrastructure prepared via `render.yaml` & `Procfile` (FastAPI + LSTM autoencoder + Climatological drift services ready for 1-click deployment on Render free tier).
 
-Explore the live deployed frontend application on GitHub Pages:  
-👉 **[https://aryan1238.github.io/TeamBinary_Beacons/](https://aryan1238.github.io/TeamBinary_Beacons/)**
 
 ---
 

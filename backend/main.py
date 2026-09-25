@@ -54,18 +54,38 @@ app = FastAPI(
 )
 
 # Enable CORS for frontend and GitHub Pages production deployment
+allowed_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+custom_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+
+default_origins = [
+    "https://aryan1238.github.io",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
+all_allowed_origins = list(set(default_origins + custom_origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://aryan1238.github.io",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "*"
-    ],
+    allow_origins=all_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/health")
+@app.get("/api/health")
+def health_check():
+    """Lightweight health check endpoint for Render / monitoring services."""
+    return {
+        "status": "healthy",
+        "service": "skyguard-ai-backend",
+        "timestamp": datetime.now().isoformat()
+    }
 
 # Operational Mode: 'live' (real Open-Meteo data) or 'demo' (SIH demo scenarios)
 current_mode = "live"
@@ -1179,4 +1199,11 @@ def api_get_simulation_history():
     return {
         "history": simulation_service.get_history()
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
+
 

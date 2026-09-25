@@ -1,0 +1,14 @@
+﻿services:
+  - type: web
+    name: skyguard-ai-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://aryan1238.github.io

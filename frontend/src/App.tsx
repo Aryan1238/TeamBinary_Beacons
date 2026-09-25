@@ -24,7 +24,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 import { Station, AnomalyRecord, NetworkKPIs } from './types';
-import { api } from './services/api';
+import { api, API_BASE } from './services/api';
 
 export function App() {
   const [mode, setMode] = useState<'LIVE' | 'DEMO'>('LIVE');
@@ -129,8 +129,15 @@ export function App() {
   useEffect(() => {
     let ws: WebSocket | null = null;
     try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
+      let wsUrl: string;
+      if (API_BASE.startsWith('http://') || API_BASE.startsWith('https://')) {
+        const u = new URL(API_BASE);
+        const wsProto = u.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${wsProto}//${u.host}/ws/telemetry`;
+      } else {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
+      }
       ws = new WebSocket(wsUrl);
 
       ws.onmessage = (event) => {
