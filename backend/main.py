@@ -271,7 +271,7 @@ def get_station_detail(station_id: str):
     global current_mode
     if current_mode == "live":
         live_data = live_weather_service.fetch_live_weather(force=False)
-        st = next((s for s in live_data["stations"] if s["id"] == station_id), None)
+        st = next((s for s in live_data["stations"] if s["id"] == station_id or s.get("code") == station_id or s.get("meteostat_id") == station_id or s.get("name", "").lower() == station_id.lower()), None)
         if not st:
             raise HTTPException(status_code=404, detail=f"Location {station_id} not found")
 
@@ -292,7 +292,7 @@ def get_station_detail(station_id: str):
             })
         nearby.sort(key=lambda x: x["distance_km"])
 
-        anomalies = [a for a in live_data["anomalies"] if a["station_id"] == station_id]
+        anomalies = [a for a in live_data["anomalies"] if a["station_id"] in (st["id"], st.get("code"), st.get("meteostat_id"))]
         temp = st["temperature"] or 28.0
         press = st["pressure"] or 1008.0
         rh = st["humidity"] or 60.0
@@ -701,7 +701,7 @@ def ask_copilot(req: CopilotQueryRequest):
                 f"with {stats['highest_temp_location']} and {stats['lowest_temp_location']}. "
                 f"Average humidity is {stats['avg_humidity']}%. "
                 f"Data quality is assessed at {live_data['data_quality']['validity_pct']} validity. "
-                f"You can ask me about any specific city (e.g., Pune, Delhi, Mumbai), query highest/lowest values, "
+                f"You can ask me about any specific station (e.g., Pune, Chennai, Mumbai, Bengaluru), query highest/lowest values, "
                 f"or run SIH Demo scenarios."
             )
         }

@@ -38,7 +38,7 @@ export function App() {
     }
     return 'landing';
   });
-  const [selectedStationId, setSelectedStationId] = useState<string>('LOC-MH-02');
+  const [selectedStationId, setSelectedStationId] = useState<string>('AWS-003');
   const [stations, setStations] = useState<Station[]>([]);
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([]);
   const [kpis, setKpis] = useState<NetworkKPIs | null>(null);

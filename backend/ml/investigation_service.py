@@ -33,9 +33,10 @@ STATION_METADATA: Dict[str, Dict[str, Any]] = {
     "43279": {"name": "Chennai Minambakkam", "lat": 12.9900, "lon": 80.1693, "min_temp": 20.0, "max_temp": 38.0, "meteostat_id": "43279", "noaa_id": "43279099999"},
     "43279099999": {"name": "Chennai Minambakkam", "lat": 12.9900, "lon": 80.1693, "min_temp": 20.0, "max_temp": 38.0, "meteostat_id": "43279", "noaa_id": "43279099999"},
 
-    # Kolkata
-    "AWS-002": {"name": "Kolkata Dum Dum", "lat": 22.6547, "lon": 88.4467, "min_temp": 18.0, "max_temp": 36.5, "meteostat_id": "42809", "noaa_id": None},
-    "42809": {"name": "Kolkata Dum Dum", "lat": 22.6547, "lon": 88.4467, "min_temp": 18.0, "max_temp": 36.5, "meteostat_id": "42809", "noaa_id": None},
+    # Bengaluru
+    "AWS-002": {"name": "Bengaluru HAL", "lat": 12.9500, "lon": 77.6680, "min_temp": 16.0, "max_temp": 33.0, "meteostat_id": "43295", "noaa_id": "43295099999"},
+    "43295": {"name": "Bengaluru HAL", "lat": 12.9500, "lon": 77.6680, "min_temp": 16.0, "max_temp": 33.0, "meteostat_id": "43295", "noaa_id": "43295099999"},
+    "43295099999": {"name": "Bengaluru HAL", "lat": 12.9500, "lon": 77.6680, "min_temp": 16.0, "max_temp": 33.0, "meteostat_id": "43295", "noaa_id": "43295099999"},
 
     # Pune
     "AWS-003": {"name": "Pune", "lat": 18.5800, "lon": 73.9197, "min_temp": 18.0, "max_temp": 32.0, "meteostat_id": "43063", "noaa_id": "43063099999"},
@@ -47,20 +48,20 @@ STATION_METADATA: Dict[str, Dict[str, Any]] = {
     "43057": {"name": "Mumbai Santacruz", "lat": 19.0886, "lon": 72.8679, "min_temp": 20.0, "max_temp": 35.0, "meteostat_id": "43057", "noaa_id": "43057099999"},
     "43057099999": {"name": "Mumbai Santacruz", "lat": 19.0886, "lon": 72.8679, "min_temp": 20.0, "max_temp": 35.0, "meteostat_id": "43057", "noaa_id": "43057099999"},
 
+    # Kolkata
+    "AWS-005": {"name": "Kolkata Dum Dum", "lat": 22.6547, "lon": 88.4467, "min_temp": 18.0, "max_temp": 36.5, "meteostat_id": "42809", "noaa_id": "42809099999"},
+    "42809": {"name": "Kolkata Dum Dum", "lat": 22.6547, "lon": 88.4467, "min_temp": 18.0, "max_temp": 36.5, "meteostat_id": "42809", "noaa_id": "42809099999"},
+    "42809099999": {"name": "Kolkata Dum Dum", "lat": 22.6547, "lon": 88.4467, "min_temp": 18.0, "max_temp": 36.5, "meteostat_id": "42809", "noaa_id": "42809099999"},
+
     # Ahmedabad
-    "AWS-005": {"name": "Ahmedabad SVP", "lat": 23.0725, "lon": 72.6347, "min_temp": 20.0, "max_temp": 42.0, "meteostat_id": "42647", "noaa_id": "42647099999"},
+    "AWS-006": {"name": "Ahmedabad SVP", "lat": 23.0725, "lon": 72.6347, "min_temp": 20.0, "max_temp": 42.0, "meteostat_id": "42647", "noaa_id": "42647099999"},
     "42647": {"name": "Ahmedabad SVP", "lat": 23.0725, "lon": 72.6347, "min_temp": 20.0, "max_temp": 42.0, "meteostat_id": "42647", "noaa_id": "42647099999"},
     "42647099999": {"name": "Ahmedabad SVP", "lat": 23.0725, "lon": 72.6347, "min_temp": 20.0, "max_temp": 42.0, "meteostat_id": "42647", "noaa_id": "42647099999"},
 
     # Hyderabad
-    "AWS-006": {"name": "Hyderabad Begumpet", "lat": 17.4531, "lon": 78.4676, "min_temp": 19.0, "max_temp": 37.0, "meteostat_id": "43128", "noaa_id": "43128099999"},
+    "AWS-007": {"name": "Hyderabad Begumpet", "lat": 17.4531, "lon": 78.4676, "min_temp": 19.0, "max_temp": 37.0, "meteostat_id": "43128", "noaa_id": "43128099999"},
     "43128": {"name": "Hyderabad Begumpet", "lat": 17.4531, "lon": 78.4676, "min_temp": 19.0, "max_temp": 37.0, "meteostat_id": "43128", "noaa_id": "43128099999"},
     "43128099999": {"name": "Hyderabad Begumpet", "lat": 17.4531, "lon": 78.4676, "min_temp": 19.0, "max_temp": 37.0, "meteostat_id": "43128", "noaa_id": "43128099999"},
-
-    # Bengaluru
-    "AWS-007": {"name": "Bengaluru HAL", "lat": 12.9500, "lon": 77.6680, "min_temp": 16.0, "max_temp": 33.0, "meteostat_id": "43295", "noaa_id": "43295099999"},
-    "43295": {"name": "Bengaluru HAL", "lat": 12.9500, "lon": 77.6680, "min_temp": 16.0, "max_temp": 33.0, "meteostat_id": "43295", "noaa_id": "43295099999"},
-    "43295099999": {"name": "Bengaluru HAL", "lat": 12.9500, "lon": 77.6680, "min_temp": 16.0, "max_temp": 33.0, "meteostat_id": "43295", "noaa_id": "43295099999"},
 }
 
 

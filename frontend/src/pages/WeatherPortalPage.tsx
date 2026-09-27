@@ -42,7 +42,7 @@ export const WeatherPortalPage: React.FC<WeatherPortalPageProps> = ({
 
   // Selected station
   const [selectedStationId, setSelectedStationId] = useState<string>(
-    stations.length > 0 ? stations[0].id : 'LOC-MH-02'
+    stations.length > 0 ? stations[0].id : 'AWS-003'
   );
 
   // Search input

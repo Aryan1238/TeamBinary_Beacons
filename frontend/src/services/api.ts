@@ -2,23 +2,15 @@ import { Station, AnomalyRecord, TelemetryReading, SensorHealthMetric, Maintenan
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
-// 15 Real Indian Locations
-export const REAL_INDIAN_LOCATIONS: Array<{ id: string; name: string; state: string; region: string; lat: number; lon: number; elevation: number }> = [
-  { id: "LOC-DL-01", name: "Delhi", state: "Delhi", region: "Northern", lat: 28.6139, lon: 77.2090, elevation: 216 },
-  { id: "LOC-MH-01", name: "Mumbai", state: "Maharashtra", region: "Western", lat: 19.0760, lon: 72.8777, elevation: 14 },
-  { id: "LOC-MH-02", name: "Pune", state: "Maharashtra", region: "Western", lat: 18.5204, lon: 73.8567, elevation: 560 },
-  { id: "LOC-MH-03", name: "Nashik", state: "Maharashtra", region: "Western", lat: 19.9975, lon: 73.7898, elevation: 579 },
-  { id: "LOC-MH-04", name: "Nagpur", state: "Maharashtra", region: "Central", lat: 21.1458, lon: 79.0882, elevation: 310 },
-  { id: "LOC-KA-01", name: "Bengaluru", state: "Karnataka", region: "Southern", lat: 12.9716, lon: 77.5946, elevation: 888 },
-  { id: "LOC-TN-01", name: "Chennai", state: "Tamil Nadu", region: "Southern", lat: 13.0827, lon: 80.2707, elevation: 16 },
-  { id: "LOC-WB-01", name: "Kolkata", state: "West Bengal", region: "Eastern", lat: 22.5726, lon: 88.3639, elevation: 6 },
-  { id: "LOC-RJ-01", name: "Jaipur", state: "Rajasthan", region: "Northern", lat: 26.9124, lon: 75.7873, elevation: 385 },
-  { id: "LOC-RJ-02", name: "Jodhpur", state: "Rajasthan", region: "Northern", lat: 26.2389, lon: 73.0243, elevation: 218 },
-  { id: "LOC-GJ-01", name: "Ahmedabad", state: "Gujarat", region: "Western", lat: 23.0225, lon: 72.5714, elevation: 55 },
-  { id: "LOC-KL-01", name: "Kochi", state: "Kerala", region: "Southern", lat: 9.9312, lon: 76.2673, elevation: 3 },
-  { id: "LOC-AS-01", name: "Guwahati", state: "Assam", region: "North-Eastern", lat: 26.1445, lon: 91.7362, elevation: 54 },
-  { id: "LOC-UP-01", name: "Lucknow", state: "Uttar Pradesh", region: "Northern", lat: 26.8467, lon: 80.9462, elevation: 123 },
-  { id: "LOC-TG-01", name: "Hyderabad", state: "Telangana", region: "Southern", lat: 17.3850, lon: 78.4867, elevation: 542 }
+// 7 Real Audited Indian AWS Stations
+export const REAL_INDIAN_LOCATIONS: Array<{ id: string; code?: string; name: string; state: string; region: string; lat: number; lon: number; elevation: number }> = [
+  { id: "AWS-001", code: "LOC-TN-01", name: "Chennai", state: "Tamil Nadu", region: "Southern", lat: 12.9900, lon: 80.1693, elevation: 16 },
+  { id: "AWS-002", code: "LOC-KA-01", name: "Bengaluru", state: "Karnataka", region: "Southern", lat: 12.9500, lon: 77.6680, elevation: 888 },
+  { id: "AWS-003", code: "LOC-MH-02", name: "Pune", state: "Maharashtra", region: "Western", lat: 18.5800, lon: 73.9197, elevation: 592 },
+  { id: "AWS-004", code: "LOC-MH-01", name: "Mumbai", state: "Maharashtra", region: "Western", lat: 19.0886, lon: 72.8679, elevation: 14 },
+  { id: "AWS-005", code: "LOC-WB-01", name: "Kolkata", state: "West Bengal", region: "Eastern", lat: 22.6547, lon: 88.4467, elevation: 6 },
+  { id: "AWS-006", code: "LOC-GJ-01", name: "Ahmedabad", state: "Gujarat", region: "Western", lat: 23.0725, lon: 72.6347, elevation: 55 },
+  { id: "AWS-007", code: "LOC-TG-01", name: "Hyderabad", state: "Telangana", region: "Southern", lat: 17.4531, lon: 78.4676, elevation: 531 }
 ];
 
 export function decodeWeatherCode(code: number): string {
@@ -389,19 +381,19 @@ export const api = {
       if (q.includes("highest temperature") || q.includes("hottest")) {
         const maxSt = stations.reduce((prev, curr) => (curr.temperature > prev.temperature ? curr : prev), stations[0]);
         return {
-          answer: `The highest temperature currently among the 15 Indian locations is in ${maxSt.name} (${maxSt.state}) at ${maxSt.temperature}°C (Humidity: ${maxSt.humidity}%, Pressure: ${maxSt.pressure} hPa). Source: Open-Meteo API.`
+          answer: `The highest temperature currently among the monitored AWS stations is in ${maxSt.name} (${maxSt.state}) at ${maxSt.temperature}°C (Humidity: ${maxSt.humidity}%, Pressure: ${maxSt.pressure} hPa). Source: Open-Meteo API.`
         };
       }
 
       if (q.includes("lowest temperature") || q.includes("coldest")) {
         const minSt = stations.reduce((prev, curr) => (curr.temperature < prev.temperature ? curr : prev), stations[0]);
         return {
-          answer: `The lowest temperature currently among the 15 Indian locations is in ${minSt.name} (${minSt.state}) at ${minSt.temperature}°C (Humidity: ${minSt.humidity}%, Pressure: ${minSt.pressure} hPa). Source: Open-Meteo API.`
+          answer: `The lowest temperature currently among the monitored AWS stations is in ${minSt.name} (${minSt.state}) at ${minSt.temperature}°C (Humidity: ${minSt.humidity}%, Pressure: ${minSt.pressure} hPa). Source: Open-Meteo API.`
         };
       }
 
       return {
-        answer: `SkyGuard AI is actively monitoring ${stations.length} Indian locations via Open-Meteo API. All measurements satisfy physical and regional bounds. Ask me about any specific city (e.g. Pune, Delhi, Mumbai) or ask for highest/lowest temperatures!`
+        answer: `SkyGuard AI is actively monitoring ${stations.length} Indian AWS stations via Open-Meteo API. All measurements satisfy physical and regional bounds. Ask me about any specific station (e.g. Pune, Chennai, Mumbai, Bengaluru) or ask for highest/lowest temperatures!`
       };
     }
   }

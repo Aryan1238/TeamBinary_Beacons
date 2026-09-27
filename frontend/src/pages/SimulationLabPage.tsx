@@ -29,7 +29,7 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({
   onTriggerScenario,
   onReset
 }) => {
-  const [targetStationId, setTargetStationId] = useState('LOC-MH-02');
+  const [targetStationId, setTargetStationId] = useState('AWS-003');
   const [customParam, setCustomParam] = useState<'Temperature' | 'Pressure' | 'Humidity'>('Temperature');
   const [customValue, setCustomValue] = useState('55.0');
   const [isInjecting, setIsInjecting] = useState(false);

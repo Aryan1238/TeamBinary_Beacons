@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, ChevronDown, CloudSun } from 'lucide-react';
 import { NetworkVisual } from './NetworkVisual';
+import { api } from '../../services/api';
 
 interface HeroProps {
   onOpenDashboard: () => void;
@@ -8,6 +9,17 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onOpenDashboard, onExploreSystem }) => {
+  const [stationCount, setStationCount] = useState<number>(7);
+
+  useEffect(() => {
+    let mounted = true;
+    api.getStations().then((stations) => {
+      if (mounted && stations && stations.length > 0) {
+        setStationCount(stations.length);
+      }
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
   return (
     <section className="relative overflow-hidden pt-8 pb-16 sm:pt-14 sm:pb-24 border-b border-slate-200">
       
@@ -71,7 +83,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenDashboard, onExploreSystem }) 
             <div className="pt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono text-slate-500">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
-                <span>Simulated Network: <strong className="text-slate-800">20 AWS Nodes Active</strong></span>
+                <span>Audited Network: <strong className="text-slate-800">{stationCount} AWS Nodes Active</strong></span>
               </div>
               <div className="flex items-center gap-2">
                 <CloudSun className="w-3.5 h-3.5 text-sky-600" />

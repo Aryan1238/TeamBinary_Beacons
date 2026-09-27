@@ -59,7 +59,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
   const criticalAnomaly = anomalies.find(a => a.severity === 'CRITICAL');
   const defaultStation = stations.find(s => s.name === "Pune") || stations[0];
   const [selectedStationId, setSelectedStationId] = useState<string>(
-    criticalAnomaly ? criticalAnomaly.station_id : (defaultStation?.id || 'LOC-MH-02')
+    criticalAnomaly ? criticalAnomaly.station_id : (defaultStation?.id || 'AWS-003')
   );
 
   const selectedStation = stations.find(s => s.id === selectedStationId) || defaultStation;

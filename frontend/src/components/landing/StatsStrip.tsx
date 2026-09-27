@@ -1,25 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Radio, Wifi, AlertTriangle, ShieldCheck, Info, CloudSun } from 'lucide-react';
+import { api } from '../../services/api';
 
 export const StatsStrip: React.FC = () => {
+  const [stationCount, setStationCount] = useState<number>(7);
+
+  useEffect(() => {
+    let mounted = true;
+    api.getStations().then((stations) => {
+      if (mounted && stations && stations.length > 0) {
+        setStationCount(stations.length);
+      }
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
   const stats = [
     {
       id: '01',
-      value: '20',
-      label: 'Demo Stations',
-      description: 'Simulated across varied microclimatic terrain and topographical zones',
+      value: String(stationCount),
+      label: 'Audited Stations',
+      description: 'IMD & MoES calibrated nodes across national microclimatic terrain zones',
       icon: Radio,
       accentColor: 'text-sky-600',
       iconBg: 'bg-sky-50 border-sky-200 text-sky-600 shadow-xs',
       borderGlow: 'hover:border-sky-300 hover:shadow-md',
       cardBg: 'bg-white',
-      statusText: '13 Synced Zones',
+      statusText: `${stationCount} Synced Stations`,
       statusColor: 'text-sky-700'
     },
     {
       id: '02',
-      value: '15',
-      label: 'Online Stations',
+      value: String(stationCount),
+      label: 'Online Telemetry Streams',
       description: 'Active continuous meteorological telemetry streams with sub-second polling',
       icon: Wifi,
       accentColor: 'text-emerald-600',

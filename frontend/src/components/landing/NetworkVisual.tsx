@@ -44,38 +44,25 @@ export const NetworkVisual: React.FC = () => {
   }, []);
 
   const stations: StationNode[] = [
-    { id: 'st-1', name: 'Srinagar', code: 'LOC-SXR', x: 195, y: 65, status: 'nominal', region: 'North' },
-    { id: 'st-2', name: 'Delhi', code: 'LOC-DEL', x: 225, y: 135, status: 'active_sync', region: 'North' },
-    { id: 'st-3', name: 'Jaipur', code: 'LOC-JPR', x: 175, y: 180, status: 'nominal', region: 'Northwest' },
-    { id: 'st-4', name: 'Ahmedabad', code: 'LOC-AMD', x: 140, y: 235, status: 'nominal', region: 'West' },
-    { id: 'st-5', name: 'Mumbai', code: 'LOC-BOM', x: 155, y: 300, status: 'nominal', region: 'West' },
-    { id: 'st-6', name: 'Pune', code: 'LOC-PUN', x: 190, y: 330, status: 'active_sync', region: 'West' },
-    { id: 'st-7', name: 'Bhopal', code: 'LOC-BHO', x: 235, y: 230, status: 'nominal', region: 'Central' },
-    { id: 'st-8', name: 'Hyderabad', code: 'LOC-HYD', x: 235, y: 310, status: 'nominal', region: 'South-Central' },
-    { id: 'st-9', name: 'Bengaluru', code: 'LOC-BLR', x: 220, y: 405, status: 'active_sync', region: 'South' },
-    { id: 'st-10', name: 'Chennai', code: 'LOC-MAA', x: 270, y: 395, status: 'nominal', region: 'South' },
-    { id: 'st-11', name: 'Bhubaneswar', code: 'LOC-BBI', x: 335, y: 280, status: 'nominal', region: 'East' },
-    { id: 'st-12', name: 'Kolkata', code: 'LOC-CCU', x: 370, y: 225, status: 'nominal', region: 'East' },
-    { id: 'st-13', name: 'Guwahati', code: 'LOC-GAU', x: 440, y: 180, status: 'nominal', region: 'Northeast' }
+    { id: 'st-1', name: 'Ahmedabad', code: 'AWS-006', x: 140, y: 235, status: 'nominal', region: 'West' },
+    { id: 'st-2', name: 'Mumbai', code: 'AWS-004', x: 155, y: 300, status: 'nominal', region: 'West' },
+    { id: 'st-3', name: 'Pune', code: 'AWS-003', x: 190, y: 330, status: 'active_sync', region: 'West' },
+    { id: 'st-4', name: 'Hyderabad', code: 'AWS-007', x: 235, y: 310, status: 'nominal', region: 'South' },
+    { id: 'st-5', name: 'Bengaluru', code: 'AWS-002', x: 220, y: 405, status: 'active_sync', region: 'South' },
+    { id: 'st-6', name: 'Chennai', code: 'AWS-001', x: 270, y: 395, status: 'nominal', region: 'South' },
+    { id: 'st-7', name: 'Kolkata', code: 'AWS-005', x: 370, y: 225, status: 'nominal', region: 'East' }
   ];
 
   const edges = [
     { from: 'st-1', to: 'st-2' },
     { from: 'st-2', to: 'st-3' },
-    { from: 'st-2', to: 'st-7' },
+    { from: 'st-1', to: 'st-3' },
     { from: 'st-3', to: 'st-4' },
     { from: 'st-4', to: 'st-5' },
     { from: 'st-5', to: 'st-6' },
-    { from: 'st-6', to: 'st-8' },
-    { from: 'st-7', to: 'st-8' },
-    { from: 'st-7', to: 'st-11' },
-    { from: 'st-8', to: 'st-9' },
-    { from: 'st-9', to: 'st-10' },
-    { from: 'st-8', to: 'st-10' },
-    { from: 'st-10', to: 'st-11' },
-    { from: 'st-11', to: 'st-12' },
-    { from: 'st-12', to: 'st-13' },
-    { from: 'st-2', to: 'st-12' }
+    { from: 'st-4', to: 'st-6' },
+    { from: 'st-4', to: 'st-7' },
+    { from: 'st-6', to: 'st-7' }
   ];
 
   const getStationCoords = (id: string) => {
@@ -110,7 +97,7 @@ export const NetworkVisual: React.FC = () => {
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 font-mono">
-                13 Regional Nodes • Automated Packet Assurance
+                7 Audited Nodes • Automated Packet Assurance
               </p>
             </div>
           </div>
