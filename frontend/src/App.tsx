@@ -27,6 +27,25 @@ import { Station, AnomalyRecord, NetworkKPIs } from './types';
 import { api, API_BASE } from './services/api';
 import { TelemetryProvider, useTelemetry } from './Dashboard/context/TelemetryContext';
 
+const getBaseAwarePath = (subPath: string) => {
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  return `${base}${subPath.startsWith('/') ? subPath : `/${subPath}`}`;
+};
+
+const isDashboardRoute = (path: string, hash: string) => {
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  const cleanPath = path.replace(/\/$/, '');
+  return (
+    cleanPath === `${base}/dashboard` ||
+    cleanPath === '/dashboard' ||
+    cleanPath === `${base}/monitoring-dashboard` ||
+    cleanPath === '/monitoring-dashboard' ||
+    hash === '#dashboard' ||
+    hash === '#monitoring-dashboard' ||
+    hash.startsWith('#/dashboard')
+  );
+};
+
 function AppContent() {
   const [mode, setMode] = useState<'LIVE' | 'DEMO'>('LIVE');
   const [currentTab, setCurrentTab] = useState<string>(() => {
@@ -42,7 +61,7 @@ function AppContent() {
 
       const path = window.location.pathname;
       const hash = window.location.hash;
-      if (path === '/dashboard' || hash === '#dashboard' || path === '/monitoring-dashboard' || hash === '#monitoring-dashboard') {
+      if (isDashboardRoute(path, hash)) {
         return 'dashboard-app';
       }
     }
@@ -51,6 +70,21 @@ function AppContent() {
 
   const { runAllScenarios, demoProgress, resetSimulation, injectFault } = useTelemetry();
   const autoTriggeredRef = useRef(false);
+
+  // Sync tab with browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (isDashboardRoute(path, hash)) {
+        setCurrentTab('dashboard-app');
+      } else {
+        setCurrentTab('landing');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Auto-start demo if ?demo=all is present in URL
   useEffect(() => {
@@ -282,19 +316,19 @@ function AppContent() {
               onOpenDashboard={() => {
                 setCurrentTab('dashboard-app');
                 if (typeof window !== 'undefined' && window.history.pushState) {
-                  window.history.pushState({}, '', '/dashboard');
+                  window.history.pushState({}, '', getBaseAwarePath('/dashboard'));
                 }
               }}
               onLaunchCommandCenter={() => {
                 setCurrentTab('dashboard-app');
                 if (typeof window !== 'undefined' && window.history.pushState) {
-                  window.history.pushState({}, '', '/dashboard');
+                  window.history.pushState({}, '', getBaseAwarePath('/dashboard'));
                 }
               }}
               onLaunchSimulationLab={() => {
                 setCurrentTab('dashboard-app');
                 if (typeof window !== 'undefined' && window.history.pushState) {
-                  window.history.pushState({}, '', '/dashboard');
+                  window.history.pushState({}, '', getBaseAwarePath('/dashboard'));
                 }
               }}
             />
@@ -306,7 +340,7 @@ function AppContent() {
                 onNavigateHome={() => {
                   setCurrentTab('landing');
                   if (typeof window !== 'undefined' && window.history.pushState) {
-                    window.history.pushState({}, '', '/');
+                    window.history.pushState({}, '', getBaseAwarePath('/'));
                   }
                 }}
               />
@@ -318,7 +352,7 @@ function AppContent() {
               onBackToLanding={() => {
                 setCurrentTab('landing');
                 if (typeof window !== 'undefined' && window.history.pushState) {
-                  window.history.pushState({}, '', '/');
+                  window.history.pushState({}, '', getBaseAwarePath('/'));
                 }
               }}
             />

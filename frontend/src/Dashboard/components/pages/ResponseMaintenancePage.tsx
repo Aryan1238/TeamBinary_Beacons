@@ -24,7 +24,7 @@ import type {
   MaintenanceTicketsResponse,
   SensorType
 } from '../../types/dashboard.types';
-import { API_BASE } from '../../../services/api';
+import { API_BASE, getSessionHeaders } from '../../../services/api';
 
 interface ResponseMaintenancePageProps {
   onNavigateTab?: (tab: DashboardTab) => void;
@@ -68,7 +68,9 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
 
   const fetchTickets = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/maintenance/tickets`);
+      const res = await fetch(`${API_BASE}/maintenance/tickets`, {
+        headers: getSessionHeaders(),
+      });
       if (res.ok) {
         const data: MaintenanceTicketsResponse = await res.json();
         setTickets(data.tickets || []);
@@ -91,7 +93,7 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
     try {
       const res = await fetch(`${API_BASE}/maintenance/tickets/${ticketId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSessionHeaders(),
         body: JSON.stringify({
           status: newStatus,
           resolution: newStatus === 'RESOLVED' ? 'Field repair and probe adjustment completed.' : undefined,
@@ -116,6 +118,7 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
     try {
       const res = await fetch(`${API_BASE}/maintenance/tickets/${ticketId}/verify`, {
         method: 'POST',
+        headers: getSessionHeaders(),
       });
       const data = await res.json();
       setVerificationFeedback({
@@ -161,7 +164,7 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
 
       const res = await fetch(`${API_BASE}/maintenance/tickets`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSessionHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -180,7 +183,7 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
     try {
       const res = await fetch(`${API_BASE}/maintenance/tickets/${ticketId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSessionHeaders(),
         body: JSON.stringify({
           note: newNoteText.trim(),
           author: 'Operator Log',

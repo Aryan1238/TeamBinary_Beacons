@@ -2,6 +2,24 @@ import { Station, AnomalyRecord, TelemetryReading, SensorHealthMetric, Maintenan
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
+export function getOrCreateSessionId(): string {
+  if (typeof window === 'undefined') return 'default';
+  let sid = sessionStorage.getItem('skyguard_session_id');
+  if (!sid) {
+    sid = 'sess_' + Math.random().toString(36).substring(2, 10);
+    sessionStorage.setItem('skyguard_session_id', sid);
+  }
+  return sid;
+}
+
+export function getSessionHeaders(extraHeaders?: Record<string, string>): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'X-Session-ID': getOrCreateSessionId(),
+    ...(extraHeaders || {})
+  };
+}
+
 // 7 Real Audited Indian AWS Stations
 export const REAL_INDIAN_LOCATIONS: Array<{ id: string; code?: string; name: string; state: string; region: string; lat: number; lon: number; elevation: number }> = [
   { id: "AWS-001", code: "LOC-TN-01", name: "Chennai", state: "Tamil Nadu", region: "Southern", lat: 12.9900, lon: 80.1693, elevation: 16 },
@@ -251,7 +269,9 @@ export const api = {
 
   async getSensorHealth(): Promise<SensorHealthMetric[]> {
     try {
-      const res = await fetch(`${API_BASE}/sensor-health`);
+      const res = await fetch(`${API_BASE}/sensor-health`, {
+        headers: getSessionHeaders()
+      });
       if (!res.ok) throw new Error("API Offline");
       return await res.json();
     } catch {
@@ -276,7 +296,9 @@ export const api = {
 
   async getMaintenance(): Promise<MaintenanceTicket[]> {
     try {
-      const res = await fetch(`${API_BASE}/maintenance`);
+      const res = await fetch(`${API_BASE}/maintenance`, {
+        headers: getSessionHeaders()
+      });
       if (!res.ok) throw new Error("API Offline");
       return await res.json();
     } catch {
@@ -286,7 +308,9 @@ export const api = {
 
   async getReports(): Promise<IncidentReport[]> {
     try {
-      const res = await fetch(`${API_BASE}/reports`);
+      const res = await fetch(`${API_BASE}/reports`, {
+        headers: getSessionHeaders()
+      });
       if (!res.ok) throw new Error("API Offline");
       return await res.json();
     } catch {
@@ -296,7 +320,10 @@ export const api = {
 
   async forceRefreshLiveWeather(): Promise<any> {
     try {
-      const res = await fetch(`${API_BASE}/live-weather/refresh`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/live-weather/refresh`, {
+        method: 'POST',
+        headers: getSessionHeaders()
+      });
       return await res.json();
     } catch {
       directOpenMeteoLastFetch = 0; // invalidate cache
@@ -307,7 +334,10 @@ export const api = {
 
   async toggleMode(mode: 'live' | 'demo'): Promise<any> {
     try {
-      const res = await fetch(`${API_BASE}/mode/toggle?target_mode=${mode}`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/mode/toggle?target_mode=${mode}`, {
+        method: 'POST',
+        headers: getSessionHeaders()
+      });
       return await res.json();
     } catch {
       return { success: true, mode };
@@ -318,7 +348,7 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE}/simulation/inject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSessionHeaders(),
         body: JSON.stringify(req)
       });
       return await res.json();
@@ -329,7 +359,10 @@ export const api = {
 
   async triggerScenario(scenarioName: string): Promise<any> {
     try {
-      const res = await fetch(`${API_BASE}/simulation/scenario/${scenarioName}`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/simulation/scenario/${scenarioName}`, {
+        method: 'POST',
+        headers: getSessionHeaders()
+      });
       return await res.json();
     } catch {
       return { success: true, mode: 'demo' };
@@ -338,7 +371,10 @@ export const api = {
 
   async resetSimulation(): Promise<any> {
     try {
-      const res = await fetch(`${API_BASE}/simulation/reset`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/simulation/reset`, {
+        method: 'POST',
+        headers: getSessionHeaders()
+      });
       return await res.json();
     } catch {
       return { success: true, mode: 'live' };
@@ -349,7 +385,7 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE}/correction/accept`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSessionHeaders(),
         body: JSON.stringify({ anomaly_id: anomalyId })
       });
       return res.ok;

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { CommandOverviewPage } from './components/pages/CommandOverviewPage';
 import { LiveMonitoringPage } from './components/pages/LiveMonitoringPage';
@@ -16,7 +16,8 @@ import { SimulationLabPage } from './components/pages/SimulationLabPage';
 import type { DashboardTab, AnomalyAlert } from './types/dashboard.types';
 import { TelemetryProvider, useTelemetry } from './context/TelemetryContext';
 import { investigationToAlert } from './utils/investigationUtils';
-import { API_BASE } from '../services/api';
+import { API_BASE, getSessionHeaders } from '../services/api';
+import { alertSoundService } from './utils/audioAlert';
 
 interface DashboardAppProps {
   onNavigateHome?: () => void;
@@ -24,7 +25,7 @@ interface DashboardAppProps {
 
 const DashboardContent: React.FC<DashboardAppProps> = ({
   onNavigateHome = () => {
-    window.location.href = '/';
+    window.location.href = import.meta.env.BASE_URL || '/';
   },
 }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
@@ -41,9 +42,29 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
   const [openTicketsCount, setOpenTicketsCount] = useState<number>(0);
   const { stations, investigationsList } = useTelemetry();
 
+  // Audio alert on genuine new HIGH or CRITICAL investigation records
+  const seenRecordIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    let hasNewCriticalOrHigh = false;
+    for (const inv of investigationsList) {
+      const id = inv.id || inv.station_id;
+      if (id && !seenRecordIdsRef.current.has(id)) {
+        seenRecordIdsRef.current.add(id);
+        if (inv.severity === 'CRITICAL' || inv.severity === 'HIGH') {
+          hasNewCriticalOrHigh = true;
+        }
+      }
+    }
+    if (hasNewCriticalOrHigh) {
+      alertSoundService.playAlertChirp(true);
+    }
+  }, [investigationsList]);
+
   const fetchTicketsCount = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/maintenance/tickets`);
+      const res = await fetch(`${API_BASE}/maintenance/tickets`, {
+        headers: getSessionHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setOpenTicketsCount(data?.kpis?.open_tickets ?? 0);

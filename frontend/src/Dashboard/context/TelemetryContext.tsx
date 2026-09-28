@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { MOCK_STATIONS, MOCK_24H_HISTORY, HistoryPoint } from '../data/mockStations';
 import type { AWSStation, SensorType, StationStatus, MLInferenceResult, InvestigationRecord } from '../types/dashboard.types';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getSessionHeaders } from '../../services/api';
 
 export type SimulationStatus = 'STOPPED' | 'RUNNING' | 'PAUSED';
 
@@ -178,12 +178,18 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   streamSourcesRef.current = streamSources;
   const tickCountRef = useRef<number>(tickCount);
   tickCountRef.current = tickCount;
+  const inFlightRequestsRef = useRef<Record<string, boolean>>({});
 
   // Polling active investigations from backend to stay in sync with API evaluations and test scripts
   useEffect(() => {
     const fetchActive = () => {
-      fetch(`${API_BASE}/investigation/active`)
-        .then((res) => res.json())
+      fetch(`${API_BASE}/investigation/active`, {
+        headers: getSessionHeaders(),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
         .then((data) => {
           if (data && data.investigations) {
             const mapped: Record<string, InvestigationRecord> = {};
@@ -193,7 +199,10 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             setActiveInvestigations(mapped);
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          // Non-blocking background log
+          console.warn('[TelemetryContext] Investigation polling sync:', err.message || err);
+        });
     };
 
     fetchActive();
@@ -547,32 +556,41 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             ...prev,
             [station.id]: `NO DATA — link down for ${hoursDown}h`,
           }));
-          const invPayload = {
-            station_id: station.id,
-            source,
-            timestamp: simTimestamp,
-            temperature: updatedStation.sensors.temperature.value,
-            humidity: updatedStation.sensors.humidity.value,
-            pressure: updatedStation.sensors.pressure.value,
-            wind_speed: windMs,
-            wind_direction: 180.0,
-            fault_type: fault ? fault.faultType : 'NORMAL',
-            affected_feature: fault ? fault.sensor : 'None',
-            comm_failure_hours: hoursDown,
-            ml_result: null,
-          };
-          fetch(`${API_BASE}/investigation/evaluate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(invPayload),
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data && data.has_investigation && data.investigation) {
-                setActiveInvestigations((prev) => ({ ...prev, [station.id]: data.investigation }));
-              }
+
+          if (!inFlightRequestsRef.current[station.id]) {
+            inFlightRequestsRef.current[station.id] = true;
+            const invPayload = {
+              station_id: station.id,
+              source,
+              timestamp: simTimestamp,
+              temperature: updatedStation.sensors.temperature.value,
+              humidity: updatedStation.sensors.humidity.value,
+              pressure: updatedStation.sensors.pressure.value,
+              wind_speed: windMs,
+              wind_direction: 180.0,
+              fault_type: fault ? fault.faultType : 'NORMAL',
+              affected_feature: fault ? fault.sensor : 'None',
+              comm_failure_hours: hoursDown,
+              ml_result: null,
+            };
+            fetch(`${API_BASE}/investigation/evaluate`, {
+              method: 'POST',
+              headers: getSessionHeaders(),
+              body: JSON.stringify(invPayload),
             })
-            .catch(() => {});
+              .then((res) => res.json())
+              .then((data) => {
+                if (data && data.has_investigation && data.investigation) {
+                  setActiveInvestigations((prev) => ({ ...prev, [station.id]: data.investigation }));
+                }
+              })
+              .catch((err) => {
+                console.warn(`[Telemetry] Comm failure eval delayed for ${station.id}:`, err);
+              })
+              .finally(() => {
+                inFlightRequestsRef.current[station.id] = false;
+              });
+          }
         } else if (isExcluded) {
           // STEP 1: NOAA Mumbai, Pune, Bengaluru are 3-hourly cadence and excluded from LSTM
           setTelemetryAlerts((prev) => ({ ...prev, [station.id]: null }));
@@ -593,124 +611,139 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             [station.id]: notAppML,
           }));
 
-          const invPayload = {
-            station_id: station.id,
-            source,
-            timestamp: simTimestamp,
-            temperature: updatedStation.sensors.temperature.value,
-            humidity: updatedStation.sensors.humidity.value,
-            pressure: updatedStation.sensors.pressure.value,
-            wind_speed: windMs,
-            wind_direction: 180.0,
-            fault_type: fault ? fault.faultType : 'NORMAL',
-            affected_feature: fault ? fault.sensor : 'None',
-            comm_failure_hours: 0,
-            ml_result: notAppML,
-          };
-          fetch(`${API_BASE}/investigation/evaluate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(invPayload),
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data && data.has_investigation && data.investigation) {
-                setActiveInvestigations((prev) => ({ ...prev, [station.id]: data.investigation }));
-              } else {
-                setActiveInvestigations((prev) => {
-                  if (prev[station.id]) {
-                    const next = { ...prev };
-                    delete next[station.id];
-                    return next;
-                  }
-                  return prev;
-                });
-              }
+          if (!inFlightRequestsRef.current[station.id]) {
+            inFlightRequestsRef.current[station.id] = true;
+            const invPayload = {
+              station_id: station.id,
+              source,
+              timestamp: simTimestamp,
+              temperature: updatedStation.sensors.temperature.value,
+              humidity: updatedStation.sensors.humidity.value,
+              pressure: updatedStation.sensors.pressure.value,
+              wind_speed: windMs,
+              wind_direction: 180.0,
+              fault_type: fault ? fault.faultType : 'NORMAL',
+              affected_feature: fault ? fault.sensor : 'None',
+              comm_failure_hours: 0,
+              ml_result: notAppML,
+            };
+            fetch(`${API_BASE}/investigation/evaluate`, {
+              method: 'POST',
+              headers: getSessionHeaders(),
+              body: JSON.stringify(invPayload),
             })
-            .catch(() => {});
+              .then((res) => res.json())
+              .then((data) => {
+                if (data && data.has_investigation && data.investigation) {
+                  setActiveInvestigations((prev) => ({ ...prev, [station.id]: data.investigation }));
+                } else {
+                  setActiveInvestigations((prev) => {
+                    if (prev[station.id]) {
+                      const next = { ...prev };
+                      delete next[station.id];
+                      return next;
+                    }
+                    return prev;
+                  });
+                }
+              })
+              .catch((err) => {
+                console.warn(`[Telemetry] Excluded series eval delayed for ${station.id}:`, err);
+              })
+              .finally(() => {
+                inFlightRequestsRef.current[station.id] = false;
+              });
+          }
         } else {
           setTelemetryAlerts((prev) => ({ ...prev, [station.id]: null }));
-          // Submit packet to local LSTM Inference service exactly ONCE
-          const packetPayload = {
-            station_id: source === 'NOAA' ? (station.noaaId || station.id) : (station.meteostatId || station.id),
-            source,
-            timestamp: simTimestamp,
-            temperature: updatedStation.sensors.temperature.value,
-            humidity: updatedStation.sensors.humidity.value,
-            pressure: updatedStation.sensors.pressure.value,
-            wind_speed: windMs,
-            wind_direction: 180.0,
-            fault_type: fault ? fault.faultType : 'NORMAL',
-            affected_feature: fault ? fault.sensor : 'None',
-          };
+          if (!inFlightRequestsRef.current[station.id]) {
+            inFlightRequestsRef.current[station.id] = true;
+            // Submit packet to local LSTM Inference service exactly ONCE
+            const packetPayload = {
+              station_id: source === 'NOAA' ? (station.noaaId || station.id) : (station.meteostatId || station.id),
+              source,
+              timestamp: simTimestamp,
+              temperature: updatedStation.sensors.temperature.value,
+              humidity: updatedStation.sensors.humidity.value,
+              pressure: updatedStation.sensors.pressure.value,
+              wind_speed: windMs,
+              wind_direction: 180.0,
+              fault_type: fault ? fault.faultType : 'NORMAL',
+              affected_feature: fault ? fault.sensor : 'None',
+            };
 
-          fetch(`${API_BASE}/ml/infer`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(packetPayload),
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data && data.status) {
-                setMlResults((prev) => ({
-                  ...prev,
-                  [station.id]: {
-                    status: data.status,
-                    reconstructionError: data.reconstruction_error,
-                    threshold: data.threshold || FROZEN_THRESHOLD,
-                    errorRatio: data.error_ratio,
-                    warmupStep: data.warmup_step ?? 24,
-                    dominantFeature: data.dominant_feature || 'None',
-                    source,
-                    stationId: station.id,
-                    message: data.message,
-                    updatedAt: timeString,
-                  },
-                }));
-              }
-
-              // Chain to /investigation/evaluate passing ml_result to eliminate duplicate inference calls
-              const invPayload = {
-                station_id: station.id,
-                source,
-                timestamp: simTimestamp,
-                temperature: updatedStation.sensors.temperature.value,
-                humidity: updatedStation.sensors.humidity.value,
-                pressure: updatedStation.sensors.pressure.value,
-                wind_speed: windMs,
-                wind_direction: 180.0,
-                fault_type: fault ? fault.faultType : 'NORMAL',
-                affected_feature: fault ? fault.sensor : 'None',
-                comm_failure_hours: 0,
-                ml_result: data,
-              };
-
-              fetch(`${API_BASE}/investigation/evaluate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(invPayload),
-              })
-                .then((res) => res.json())
-                .then((evalData) => {
-                  if (evalData && evalData.has_investigation && evalData.investigation) {
-                    setActiveInvestigations((prev) => ({
-                      ...prev,
-                      [station.id]: evalData.investigation,
-                    }));
-                  } else {
-                    setActiveInvestigations((prev) => {
-                      if (prev[station.id]) {
-                        const next = { ...prev };
-                        delete next[station.id];
-                        return next;
-                      }
-                      return prev;
-                    });
-                  }
-                })
-                .catch(() => {});
+            fetch(`${API_BASE}/ml/infer`, {
+              method: 'POST',
+              headers: getSessionHeaders(),
+              body: JSON.stringify(packetPayload),
             })
-            .catch(() => {});
+              .then((res) => res.json())
+              .then((data) => {
+                if (data && data.status) {
+                  setMlResults((prev) => ({
+                    ...prev,
+                    [station.id]: {
+                      status: data.status,
+                      reconstructionError: data.reconstruction_error,
+                      threshold: data.threshold || FROZEN_THRESHOLD,
+                      errorRatio: data.error_ratio,
+                      warmupStep: data.warmup_step ?? 24,
+                      dominantFeature: data.dominant_feature || 'None',
+                      source,
+                      stationId: station.id,
+                      message: data.message,
+                      updatedAt: timeString,
+                    },
+                  }));
+                }
+
+                // Chain to /investigation/evaluate passing ml_result to eliminate duplicate inference calls
+                const invPayload = {
+                  station_id: station.id,
+                  source,
+                  timestamp: simTimestamp,
+                  temperature: updatedStation.sensors.temperature.value,
+                  humidity: updatedStation.sensors.humidity.value,
+                  pressure: updatedStation.sensors.pressure.value,
+                  wind_speed: windMs,
+                  wind_direction: 180.0,
+                  fault_type: fault ? fault.faultType : 'NORMAL',
+                  affected_feature: fault ? fault.sensor : 'None',
+                  comm_failure_hours: 0,
+                  ml_result: data,
+                };
+
+                return fetch(`${API_BASE}/investigation/evaluate`, {
+                  method: 'POST',
+                  headers: getSessionHeaders(),
+                  body: JSON.stringify(invPayload),
+                })
+                  .then((res) => res.json())
+                  .then((evalData) => {
+                    if (evalData && evalData.has_investigation && evalData.investigation) {
+                      setActiveInvestigations((prev) => ({
+                        ...prev,
+                        [station.id]: evalData.investigation,
+                      }));
+                    } else {
+                      setActiveInvestigations((prev) => {
+                        if (prev[station.id]) {
+                          const next = { ...prev };
+                          delete next[station.id];
+                          return next;
+                        }
+                        return prev;
+                      });
+                    }
+                  });
+              })
+              .catch((err) => {
+                console.warn(`[Telemetry] Inference sync delayed for ${station.id}:`, err);
+              })
+              .finally(() => {
+                inFlightRequestsRef.current[station.id] = false;
+              });
+          }
         }
 
         return updatedStation;
@@ -757,9 +790,9 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setMlResults(getBaselineMLResults());
     setTelemetryAlerts({});
     setActiveInvestigations({});
-    fetch(`${API_BASE}/simulation/reset`, { method: 'POST' }).catch(() => {});
-    fetch(`${API_BASE}/ml/reset`, { method: 'POST' }).catch(() => {});
-    fetch(`${API_BASE}/investigation/clear`, { method: 'POST' }).catch(() => {});
+    fetch(`${API_BASE}/simulation/reset`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
+    fetch(`${API_BASE}/ml/reset`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
+    fetch(`${API_BASE}/investigation/clear`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
   }, []);
 
   /**
@@ -787,7 +820,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     fetch(`${API_BASE}/investigation/clear`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getSessionHeaders(),
       body: JSON.stringify({ station_id: stationId }),
     }).catch(() => {});
 
@@ -866,7 +899,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       fetch(`${API_BASE}/investigation/evaluate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSessionHeaders(),
         body: JSON.stringify(evalPayload),
       })
         .then((res) => res.json())
@@ -909,14 +942,14 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // Step 1 (t = 0s): Scenario 1 - Catastrophic 55°C Spike on AWS-001 (Chennai)
     injectFault('AWS-001', 'sudden-spike', 'temperature');
-    fetch(`${API_BASE}/simulation/scenario/scenario_1_spike`, { method: 'POST' }).catch(() => {});
+    fetch(`${API_BASE}/simulation/scenario/scenario_1_spike`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
     setDemoProgress({ active: true, count: 1 });
 
     // Step 2 (t = 2.5s): Scenario 2 - Regional Weather Front on AWS-003 (Pune) & AWS-004 (Mumbai)
     const t2 = setTimeout(() => {
       injectFault('AWS-003', 'regional-squall', 'temperature');
       injectFault('AWS-004', 'regional-squall', 'temperature');
-      fetch(`${API_BASE}/simulation/scenario/scenario_2_regional`, { method: 'POST' }).catch(() => {});
+      fetch(`${API_BASE}/simulation/scenario/scenario_2_regional`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
       setDemoProgress({ active: true, count: 2 });
     }, 2500);
     demoTimeoutsRef.current.push(t2);
@@ -924,7 +957,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Step 3 (t = 5.0s): Scenario 3 - Frozen Sensor on AWS-002 (Bengaluru)
     const t3 = setTimeout(() => {
       injectFault('AWS-002', 'frozen-sensor', 'temperature');
-      fetch(`${API_BASE}/simulation/scenario/scenario_freeze`, { method: 'POST' }).catch(() => {});
+      fetch(`${API_BASE}/simulation/scenario/scenario_freeze`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
       setDemoProgress({ active: true, count: 3 });
     }, 5000);
     demoTimeoutsRef.current.push(t3);
@@ -932,7 +965,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Step 4 (t = 7.5s): Scenario 4 - Sensor Calibration Drift on AWS-007 (Hyderabad)
     const t4 = setTimeout(() => {
       injectFault('AWS-007', 'gradual-drift', 'temperature');
-      fetch(`${API_BASE}/simulation/scenario/scenario_drift`, { method: 'POST' }).catch(() => {});
+      fetch(`${API_BASE}/simulation/scenario/scenario_drift`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
       setDemoProgress({ active: true, count: 4 });
     }, 7500);
     demoTimeoutsRef.current.push(t4);
@@ -940,7 +973,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Step 5 (t = 10.0s): Scenario 5 - RTU Communication Failure on AWS-005 (Kolkata)
     const t5 = setTimeout(() => {
       injectFault('AWS-005', 'communication-failure', 'temperature');
-      fetch(`${API_BASE}/simulation/scenario/scenario_offline`, { method: 'POST' }).catch(() => {});
+      fetch(`${API_BASE}/simulation/scenario/scenario_offline`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
       setDemoProgress({ active: true, count: 5 });
     }, 10000);
     demoTimeoutsRef.current.push(t5);

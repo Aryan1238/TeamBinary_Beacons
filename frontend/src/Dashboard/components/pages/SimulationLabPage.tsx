@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '../common/PageHeader';
 import type { DashboardTab, SensorType } from '../../types/dashboard.types';
-import { API_BASE } from '../../../services/api';
+import { API_BASE, getSessionHeaders } from '../../../services/api';
 
 interface SimulationLabPageProps {
   onNavigateTab?: (tab: DashboardTab) => void;
@@ -104,7 +104,7 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
     try {
       const res = await fetch(`${API_BASE}/simulation/warmup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSessionHeaders(),
         body: JSON.stringify({ station_id: stationId, source: currentStation.source }),
       });
       const data = await res.json();
@@ -132,7 +132,7 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
 
       const res = await fetch(`${API_BASE}/simulation/start`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSessionHeaders(),
         body: JSON.stringify({
           station_id: stationId,
           sensor,
@@ -159,7 +159,10 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
 
   const handleClearFault = async () => {
     try {
-      const res = await fetch(`${API_BASE}/simulation/clear`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/simulation/clear`, {
+        method: 'POST',
+        headers: getSessionHeaders(),
+      });
       if (res.ok) {
         setActiveSimulation(null);
         setActionFeedback('Simulated fault cleared. Live telemetry normalized.');
@@ -169,7 +172,10 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({ onNavigate
 
   const handleResetLab = async () => {
     try {
-      const res = await fetch(`${API_BASE}/simulation/reset-lab`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/simulation/reset-lab`, {
+        method: 'POST',
+        headers: getSessionHeaders(),
+      });
       if (res.ok) {
         setActiveSimulation(null);
         setWarmupStatus(null);

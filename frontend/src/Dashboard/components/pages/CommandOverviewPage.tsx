@@ -32,10 +32,10 @@ export const CommandOverviewPage: React.FC<CommandOverviewPageProps> = ({
   onInvestigateAlert,
 }) => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | StationStatus>('ALL');
-  const { simulationStatus, tickCount, activeFaults, mlResults } = useTelemetry();
+  const { simulationStatus, tickCount, activeFaults, mlResults, investigationsList } = useTelemetry();
   const activeFaultCount = Object.keys(activeFaults).length;
   const mlAnomalyCount = Object.values(mlResults).filter((r) => r.status === 'ANOMALY').length;
-  const totalAnomalies = mlAnomalyCount + activeFaultCount;
+  const confirmedAnomalyCount = investigationsList.length > 0 ? investigationsList.length : anomalies.length;
 
   const normalCount = stations.filter((s) => s.status === 'NORMAL').length;
   const warningCount = stations.filter((s) => s.status === 'WARNING').length;
@@ -81,19 +81,19 @@ export const CommandOverviewPage: React.FC<CommandOverviewPageProps> = ({
 
         <StatCard
           label="Active Anomalies"
-          value={totalAnomalies}
+          value={confirmedAnomalyCount}
           unit="Signals"
           icon={AlertTriangle}
           trend={{
-            value: totalAnomalies,
-            isPositive: totalAnomalies === 0,
-            label: totalAnomalies > 0 ? `${totalAnomalies} active anomaly signal(s)` : 'All stations nominal',
+            value: confirmedAnomalyCount,
+            isPositive: confirmedAnomalyCount === 0,
+            label: confirmedAnomalyCount > 0 ? `${confirmedAnomalyCount} active anomaly alert(s)` : 'All stations nominal',
           }}
           subtext={
-            mlAnomalyCount > 0
-              ? `${mlAnomalyCount} LSTM sequence anomaly detected`
+            confirmedAnomalyCount > 0
+              ? `${confirmedAnomalyCount} confirmed alert(s) across network`
               : activeFaultCount > 0
-              ? `${activeFaultCount} testbench injected fault(s) active`
+              ? `${activeFaultCount} fault(s) injected, awaiting AI detection`
               : '0 active sequence anomalies'
           }
           variant="rose"

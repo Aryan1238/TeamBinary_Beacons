@@ -8,9 +8,12 @@ import {
   Play,
   Pause,
   RotateCcw,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import type { DashboardTab, AWSStation } from '../../types/dashboard.types';
 import { useTelemetry } from '../../context/TelemetryContext';
+import { alertSoundService } from '../../utils/audioAlert';
 
 interface DashboardTopBarProps {
   activeTab: DashboardTab;
@@ -47,6 +50,11 @@ export const DashboardTopBar: React.FC<DashboardTopBarProps> = ({
   const [time, setTime] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => alertSoundService.isEnabled());
+
+  useEffect(() => {
+    return alertSoundService.subscribe((enabled) => setSoundEnabled(enabled));
+  }, []);
 
   const {
     simulationStatus,
@@ -251,6 +259,22 @@ export const DashboardTopBar: React.FC<DashboardTopBarProps> = ({
             )}
           </button>
         </div>
+
+        {/* Sound Alerts Toggle */}
+        <button
+          onClick={() => {
+            const next = alertSoundService.toggle();
+            setSoundEnabled(next);
+          }}
+          className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+            soundEnabled
+              ? 'text-sky-700 bg-sky-50 border-sky-200 hover:bg-sky-100'
+              : 'text-slate-400 bg-slate-100 border-slate-200 hover:bg-slate-200'
+          }`}
+          title={soundEnabled ? 'Alert Chimes Enabled (Click to Mute)' : 'Alert Chimes Muted (Click to Unmute)'}
+        >
+          {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+        </button>
 
         {/* Landing Page Link */}
         <button
