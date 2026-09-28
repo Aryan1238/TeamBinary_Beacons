@@ -177,11 +177,7 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
 };
 
 export const DashboardApp: React.FC<DashboardAppProps> = (props) => {
-  return (
-    <TelemetryProvider>
-      <DashboardContent {...props} />
-    </TelemetryProvider>
-  );
+  return <DashboardContent {...props} />;
 };
 
 export default DashboardApp;

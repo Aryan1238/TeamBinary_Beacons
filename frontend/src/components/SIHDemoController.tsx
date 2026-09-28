@@ -10,19 +10,26 @@ import {
   RotateCcw,
   Sparkles,
   Check,
-  Globe2
+  Globe2,
+  Play
 } from 'lucide-react';
 
 interface SIHDemoControllerProps {
   onTriggerScenario: (scenario: string) => Promise<void>;
+  onRunAllScenarios?: () => Promise<void>;
   onReset: () => Promise<void>;
   currentMode?: 'LIVE' | 'DEMO';
+  injectedCount?: number;
+  isRunningAll?: boolean;
 }
 
 export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
   onTriggerScenario,
+  onRunAllScenarios,
   onReset,
   currentMode = 'LIVE',
+  injectedCount = 0,
+  isRunningAll = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingScenario, setLoadingScenario] = useState<string | null>(null);
@@ -39,8 +46,8 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
     {
       id: 'scenario_1_spike',
       title: '1. Catastrophic Sensor Spike (55°C)',
-      target: 'AWS-003 (Pune)',
-      desc: 'Simulates sudden transducer fault on Pune (AWS-003). Spikes temperature from nominal 27.8°C to 55°C. AI identifies isolated departure, validates physical limit breach, and computes IDW imputed value.',
+      target: 'AWS-001 (Chennai)',
+      desc: 'Simulates sudden transducer fault on Chennai (AWS-001). Spikes temperature from nominal 29.8°C to 55°C. AI identifies isolated departure, validates physical limit breach, and computes IDW imputed value.',
       icon: Flame,
       color: 'bg-red-50 text-red-700 border border-red-200',
       badge: 'CRITICAL SENSOR FAULT'
@@ -145,6 +152,26 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
             {/* Notice regarding Demo Mode */}
             <div className="mx-5 mt-4 p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 leading-relaxed font-sans">
               <strong>Notice for Evaluators:</strong> Triggering any scenario below activates <strong>Demo Mode</strong> to evaluate ML isolation on test excursions. Real live Open-Meteo observations can be restored at any time with the <strong>Return to Live Data</strong> button.
+            </div>
+
+            {/* Run All Scenarios Top Button */}
+            <div className="mx-5 mt-3">
+              <button
+                onClick={async () => {
+                  if (onRunAllScenarios) {
+                    await onRunAllScenarios();
+                  }
+                }}
+                disabled={isRunningAll}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs tracking-wider uppercase shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>
+                  {isRunningAll
+                    ? `Running All Scenarios (${injectedCount}/5 Injected)...`
+                    : '⚡ Run All Scenarios (Progressive 5-Station Demo)'}
+                </span>
+              </button>
             </div>
 
             {/* Scenario Grid */}

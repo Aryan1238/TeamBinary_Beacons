@@ -15,7 +15,8 @@ export type FaultType =
   | 'humidity-spike'
   | 'pressure-drop'
   | 'communication-failure'
-  | 'communication_failure';
+  | 'communication_failure'
+  | 'regional-squall';
 
 export interface ActiveFault {
   stationId: string;
@@ -54,12 +55,14 @@ export interface TelemetryContextType {
   streamSources: Record<string, 'Meteostat' | 'NOAA'>;
   activeInvestigations: Record<string, InvestigationRecord>;
   investigationsList: InvestigationRecord[];
+  demoProgress: { active: boolean; count: number };
   setStreamSource: (stationId: string, source: 'Meteostat' | 'NOAA') => void;
   startSimulation: () => void;
   pauseSimulation: () => void;
   resetSimulation: () => void;
   injectFault: (stationId: string, faultType: FaultType, sensor?: SensorType) => void;
   clearFault: (stationId: string) => void;
+  runAllScenarios: () => Promise<void>;
   getStation: (id: string) => AWSStation | undefined;
 }
 
@@ -85,6 +88,8 @@ export const getFaultLabel = (type: FaultType): string => {
     case 'communication-failure':
     case 'communication_failure':
       return 'Communication Failure';
+    case 'regional-squall':
+      return 'Regional Squall Front';
     default:
       return 'Active Fault';
   }
@@ -160,6 +165,8 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [mlResults, setMlResults] = useState<Record<string, MLInferenceResult>>(getBaselineMLResults);
   const [telemetryAlerts, setTelemetryAlerts] = useState<Record<string, string | null>>({});
   const [activeInvestigations, setActiveInvestigations] = useState<Record<string, InvestigationRecord>>({});
+  const [demoProgress, setDemoProgress] = useState<{ active: boolean; count: number }>({ active: false, count: 0 });
+  const demoTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const historyBuffersRef = useRef<Record<string, HistoryPoint[]>>(historyBuffers);
   historyBuffersRef.current = historyBuffers;
@@ -299,17 +306,29 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         case 'sudden-spike':
         case 'temperature_spike': {
           if (fault.ticksActive === 0) {
-            // Abrupt step jump +11°C to +13°C
-            temp = Math.round((fault.originalValue + 11.5 + (Math.random() * 1.5)) * 10) / 10;
-            transitionNote = `Temperature: ${fault.originalValue.toFixed(1)}°C → ${temp.toFixed(1)}°C (Injected Spike)`;
+            temp = 55.0;
+            transitionNote = `Temperature: ${fault.originalValue.toFixed(1)}°C → 55.0°C (Injected Catastrophic Spike)`;
           } else {
             // Random walk continues from new elevated baseline
             const delta = (Math.random() * 0.4 - 0.2);
-            temp = Math.round((temp + delta) * 10) / 10;
+            temp = Math.round((55.0 + delta) * 10) / 10;
             transitionNote = `Temperature: ${temp.toFixed(1)}°C (Elevated Baseline)`;
           }
           stationStatus = 'ANOMALY';
           tempStatus = 'ANOMALY';
+          break;
+        }
+
+        case 'regional-squall': {
+          temp = Math.round((fault.originalValue - 7.5) * 10) / 10;
+          hum = Math.min(98, Math.max(92, Math.round(station.sensors.humidity.value + 30)));
+          press = Math.round((station.sensors.pressure.value - 8.0) * 10) / 10;
+          wind = Math.round((station.sensors.wind.value + 12.0) * 10) / 10;
+          transitionNote = `Regional Squall Front: Temp ${temp.toFixed(1)}°C, RH ${hum}%, Press -8 hPa`;
+          stationStatus = 'WARNING';
+          tempStatus = 'NORMAL';
+          humStatus = 'NORMAL';
+          pressStatus = 'NORMAL';
           break;
         }
 
@@ -723,6 +742,11 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
    * Reset Simulation: stops timer, clears all active faults, and returns ALL stations to baseline.
    */
   const resetSimulation = useCallback(() => {
+    // Clear pending demo stagger timeouts
+    demoTimeoutsRef.current.forEach((t) => clearTimeout(t));
+    demoTimeoutsRef.current = [];
+    setDemoProgress({ active: false, count: 0 });
+
     setSimulationStatus('STOPPED');
     setTickCount(0);
     setLastTickTime('Baseline State');
@@ -733,6 +757,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setMlResults(getBaselineMLResults());
     setTelemetryAlerts({});
     setActiveInvestigations({});
+    fetch(`${API_BASE}/simulation/reset`, { method: 'POST' }).catch(() => {});
     fetch(`${API_BASE}/ml/reset`, { method: 'POST' }).catch(() => {});
     fetch(`${API_BASE}/investigation/clear`, { method: 'POST' }).catch(() => {});
   }, []);
@@ -820,17 +845,18 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       // Immediately evaluate investigation on fault injection
       const isComm = faultType === 'communication-failure' || faultType === 'communication_failure';
+      const isRegional = faultType === 'regional-squall';
       const faultValue = faultType === 'sudden-spike' || faultType === 'temperature_spike'
-        ? (station.sensors.temperature.value > 30 ? 52.4 : 48.6)
-        : station.sensors.temperature.value;
+        ? 55.0
+        : (isRegional ? Math.round((station.sensors.temperature.value - 7.5) * 10) / 10 : station.sensors.temperature.value);
 
       const evalPayload = {
         station_id: stationId,
         source: streamSources[stationId] || 'Meteostat',
         timestamp: new Date().toISOString(),
         temperature: targetSensor === 'temperature' ? faultValue : station.sensors.temperature.value,
-        humidity: targetSensor === 'humidity' ? (faultType === 'humidity-spike' ? 98.0 : station.sensors.humidity.value) : station.sensors.humidity.value,
-        pressure: targetSensor === 'pressure' ? (faultType === 'pressure-drop' ? 982.0 : station.sensors.pressure.value) : station.sensors.pressure.value,
+        humidity: targetSensor === 'humidity' ? (faultType === 'humidity-spike' ? 98.0 : station.sensors.humidity.value) : (isRegional ? 94.0 : station.sensors.humidity.value),
+        pressure: targetSensor === 'pressure' ? (faultType === 'pressure-drop' ? 982.0 : station.sensors.pressure.value) : (isRegional ? station.sensors.pressure.value - 8.0 : station.sensors.pressure.value),
         wind_speed: station.sensors.wind.value,
         wind_direction: 180.0,
         fault_type: faultType,
@@ -861,6 +887,72 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return prevStations;
     });
   }, [clearFault, streamSources]);
+
+  /**
+   * Run All Scenarios Demo Mode:
+   * Staggers all 5 scenarios progressively across distinct stations from AWS-001 through AWS-007:
+   * 1. AWS-001 (Chennai): Catastrophic 55°C Sensor Spike
+   * 2. AWS-003 (Pune) & AWS-004 (Mumbai): Regional Weather Front (125km separation)
+   * 3. AWS-002 (Bengaluru): Frozen Sensor (Stuck ADC)
+   * 4. AWS-007 (Hyderabad): Sensor Calibration Drift
+   * 5. AWS-005 (Kolkata): RTU Communication Failure
+   * AWS-006 (Ahmedabad) remains completely nominal.
+   */
+  const runAllScenarios = useCallback(async () => {
+    // Clear any pending timeouts
+    demoTimeoutsRef.current.forEach((t) => clearTimeout(t));
+    demoTimeoutsRef.current = [];
+
+    // Ensure simulation is running to trigger continuous LSTM feature windows
+    setSimulationStatus('RUNNING');
+    setDemoProgress({ active: true, count: 0 });
+
+    // Step 1 (t = 0s): Scenario 1 - Catastrophic 55°C Spike on AWS-001 (Chennai)
+    injectFault('AWS-001', 'sudden-spike', 'temperature');
+    fetch(`${API_BASE}/simulation/scenario/scenario_1_spike`, { method: 'POST' }).catch(() => {});
+    setDemoProgress({ active: true, count: 1 });
+
+    // Step 2 (t = 2.5s): Scenario 2 - Regional Weather Front on AWS-003 (Pune) & AWS-004 (Mumbai)
+    const t2 = setTimeout(() => {
+      injectFault('AWS-003', 'regional-squall', 'temperature');
+      injectFault('AWS-004', 'regional-squall', 'temperature');
+      fetch(`${API_BASE}/simulation/scenario/scenario_2_regional`, { method: 'POST' }).catch(() => {});
+      setDemoProgress({ active: true, count: 2 });
+    }, 2500);
+    demoTimeoutsRef.current.push(t2);
+
+    // Step 3 (t = 5.0s): Scenario 3 - Frozen Sensor on AWS-002 (Bengaluru)
+    const t3 = setTimeout(() => {
+      injectFault('AWS-002', 'frozen-sensor', 'temperature');
+      fetch(`${API_BASE}/simulation/scenario/scenario_freeze`, { method: 'POST' }).catch(() => {});
+      setDemoProgress({ active: true, count: 3 });
+    }, 5000);
+    demoTimeoutsRef.current.push(t3);
+
+    // Step 4 (t = 7.5s): Scenario 4 - Sensor Calibration Drift on AWS-007 (Hyderabad)
+    const t4 = setTimeout(() => {
+      injectFault('AWS-007', 'gradual-drift', 'temperature');
+      fetch(`${API_BASE}/simulation/scenario/scenario_drift`, { method: 'POST' }).catch(() => {});
+      setDemoProgress({ active: true, count: 4 });
+    }, 7500);
+    demoTimeoutsRef.current.push(t4);
+
+    // Step 5 (t = 10.0s): Scenario 5 - RTU Communication Failure on AWS-005 (Kolkata)
+    const t5 = setTimeout(() => {
+      injectFault('AWS-005', 'communication-failure', 'temperature');
+      fetch(`${API_BASE}/simulation/scenario/scenario_offline`, { method: 'POST' }).catch(() => {});
+      setDemoProgress({ active: true, count: 5 });
+    }, 10000);
+    demoTimeoutsRef.current.push(t5);
+  }, [injectFault]);
+
+  // Clean up timeouts on unmount
+  useEffect(() => {
+    return () => {
+      demoTimeoutsRef.current.forEach((t) => clearTimeout(t));
+      demoTimeoutsRef.current = [];
+    };
+  }, []);
 
   // Interval manager: runs only when status is RUNNING; cleanly cleared otherwise
   useEffect(() => {
@@ -902,12 +994,14 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         streamSources,
         activeInvestigations,
         investigationsList: Object.values(activeInvestigations),
+        demoProgress,
         setStreamSource,
         startSimulation,
         pauseSimulation,
         resetSimulation,
         injectFault,
         clearFault,
+        runAllScenarios,
         getStation,
       }}
     >

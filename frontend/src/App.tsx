@@ -25,11 +25,21 @@ import { SettingsPage } from './pages/SettingsPage';
 
 import { Station, AnomalyRecord, NetworkKPIs } from './types';
 import { api, API_BASE } from './services/api';
+import { TelemetryProvider, useTelemetry } from './Dashboard/context/TelemetryContext';
 
-export function App() {
+function AppContent() {
   const [mode, setMode] = useState<'LIVE' | 'DEMO'>('LIVE');
   const [currentTab, setCurrentTab] = useState<string>(() => {
     if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = window.location.hash.includes('?')
+        ? new URLSearchParams(window.location.hash.split('?')[1])
+        : null;
+      const isDemoAll = searchParams.get('demo') === 'all' || hashParams?.get('demo') === 'all';
+      if (isDemoAll) {
+        return 'dashboard-app';
+      }
+
       const path = window.location.pathname;
       const hash = window.location.hash;
       if (path === '/dashboard' || hash === '#dashboard' || path === '/monitoring-dashboard' || hash === '#monitoring-dashboard') {
@@ -38,6 +48,26 @@ export function App() {
     }
     return 'landing';
   });
+
+  const { runAllScenarios, demoProgress, resetSimulation, injectFault } = useTelemetry();
+  const autoTriggeredRef = useRef(false);
+
+  // Auto-start demo if ?demo=all is present in URL
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !autoTriggeredRef.current) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = window.location.hash.includes('?')
+        ? new URLSearchParams(window.location.hash.split('?')[1])
+        : null;
+      const isDemoAll = searchParams.get('demo') === 'all' || hashParams?.get('demo') === 'all';
+      if (isDemoAll) {
+        autoTriggeredRef.current = true;
+        setCurrentTab('dashboard-app');
+        runAllScenarios();
+      }
+    }
+  }, [runAllScenarios]);
+
   const [selectedStationId, setSelectedStationId] = useState<string>('AWS-003');
   const [stations, setStations] = useState<Station[]>([]);
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([]);
@@ -165,6 +195,18 @@ export function App() {
 
   const handleTriggerScenario = async (scenario: string) => {
     setMode('DEMO');
+    if (scenario === 'scenario_1_spike') {
+      injectFault('AWS-001', 'sudden-spike', 'temperature');
+    } else if (scenario === 'scenario_2_regional') {
+      injectFault('AWS-003', 'regional-squall', 'temperature');
+      injectFault('AWS-004', 'regional-squall', 'temperature');
+    } else if (scenario === 'scenario_freeze') {
+      injectFault('AWS-002', 'frozen-sensor', 'temperature');
+    } else if (scenario === 'scenario_drift') {
+      injectFault('AWS-007', 'gradual-drift', 'temperature');
+    } else if (scenario === 'scenario_offline') {
+      injectFault('AWS-005', 'communication-failure', 'temperature');
+    }
     await api.triggerScenario(scenario);
     await refreshData();
     playAlertSound(scenario.includes('spike'));
@@ -172,6 +214,12 @@ export function App() {
 
   const handleResetSimulation = async () => {
     setMode('LIVE');
+    resetSimulation();
+    if (typeof window !== 'undefined' && window.history.replaceState) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('demo');
+      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
+    }
     await api.resetSimulation();
     await refreshData();
   };
@@ -391,8 +439,11 @@ export function App() {
         <>
           <SIHDemoController
             onTriggerScenario={handleTriggerScenario}
+            onRunAllScenarios={runAllScenarios}
             onReset={handleResetSimulation}
-            currentMode={mode}
+            currentMode={demoProgress.active ? 'DEMO' : mode}
+            injectedCount={demoProgress.count}
+            isRunningAll={demoProgress.active && demoProgress.count < 5}
           />
           <CopilotModal
             isOpen={copilotOpen}
@@ -407,6 +458,14 @@ export function App() {
         </>
       )}
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <TelemetryProvider>
+      <AppContent />
+    </TelemetryProvider>
   );
 }
 

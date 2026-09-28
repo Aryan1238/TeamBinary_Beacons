@@ -530,15 +530,15 @@ def trigger_scenario(scenario_name: str):
     current_mode = "demo"
 
     if scenario_name == "scenario_1_spike":
-        sim.inject_scenario_1_spike("AWS-003")
+        sim.inject_scenario_1_spike("AWS-001")
         investigation_service.evaluate_telemetry({
-            "station_id": "AWS-003",
+            "station_id": "AWS-001",
             "source": "Meteostat",
             "timestamp": datetime.now().isoformat(),
             "temperature": 55.0,
-            "humidity": 58.0,
-            "pressure": 1011.6,
-            "wind_speed": 8.6,
+            "humidity": 78.0,
+            "pressure": 1009.4,
+            "wind_speed": 15.2,
             "wind_direction": 180.0,
             "fault_type": "SPIKE",
             "affected_feature": "temperature",
@@ -547,8 +547,8 @@ def trigger_scenario(scenario_name: str):
             "success": True,
             "mode": "demo",
             "scenario": "Scenario 1: 55°C Catastrophic Spike",
-            "target": "AWS-003",
-            "message": "Switched to DEMO mode. 55°C temperature spike injected on AWS-003 (Pune)."
+            "target": "AWS-001",
+            "message": "Switched to DEMO mode. 55°C temperature spike injected on AWS-001 (Chennai)."
         }
     elif scenario_name == "scenario_2_regional":
         sim.inject_scenario_2_regional()
@@ -569,7 +569,7 @@ def trigger_scenario(scenario_name: str):
             "pressure": 1002.6,
             "wind_speed": 18.5,
             "wind_direction": 240.0,
-            "fault_type": "NORMAL",
+            "fault_type": "REGIONAL_EVENT",
             "affected_feature": "temperature",
         })
         return {
@@ -784,16 +784,16 @@ def ask_copilot(req: CopilotQueryRequest):
         }
     else:
         # In Demo Mode, answer based on the simulated scenarios
-        if "why" in q and ("flagged" in q or "aws-003" in q or "pune" in q or "spike" in q):
+        if "why" in q and ("flagged" in q or "aws-001" in q or "chennai" in q or "spike" in q):
             return {
                 "answer": (
-                    "In SIH Demo Mode: AWS-003 (Pune) was flagged because an artificial 55.0°C thermal spike was injected. "
-                    "The spatial engine compared neighboring station Mumbai (AWS-004, 125km separation) which showed 0% agreement, "
-                    "classifying it as an Isolated Sensor Malfunction with 98% confidence. Estimated corrected value: 27.8°C."
+                    "In SIH Demo Mode: AWS-001 (Chennai) was flagged because an artificial 55.0°C thermal spike was injected. "
+                    "The spatial engine compared neighboring stations which showed 0% agreement, "
+                    "classifying it as an Isolated Sensor Malfunction with 98% confidence. Estimated corrected value: 29.8°C."
                 )
             }
         return {
-            "answer": "Operating in SIH Demo Mode. You can ask about the 55°C spike on Pune (AWS-003), or click 'Return to Live Weather Data' to return to live Open-Meteo weather data."
+            "answer": "Operating in SIH Demo Mode. You can ask about the 55°C spike on Chennai (AWS-001), or click 'Return to Live Weather Data' to return to live Open-Meteo weather data."
         }
 
 

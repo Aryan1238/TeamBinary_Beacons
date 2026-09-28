@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardTopBar } from './DashboardTopBar';
 import type { DashboardTab, AWSStation } from '../../types/dashboard.types';
+import { useTelemetry } from '../../context/TelemetryContext';
 
 interface DashboardLayoutProps {
   activeTab: DashboardTab;
@@ -25,6 +27,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { demoProgress, resetSimulation } = useTelemetry();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-sky-500/20 selection:text-sky-900 relative overflow-x-hidden">
@@ -66,6 +69,40 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+          {/* Active Demo Mode Banner */}
+          {demoProgress.active && (
+            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white px-5 py-3.5 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn border border-amber-300/40">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
+                </span>
+                <div>
+                  <span className="font-bold text-sm tracking-wide">
+                    DEMO MODE — simulated faults active ({demoProgress.count}/5 injected)
+                  </span>
+                  <span className="text-xs text-amber-100 ml-2 hidden md:inline">
+                    Progressive 5-station verification suite executing through real detection pipeline
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  resetSimulation();
+                  if (typeof window !== 'undefined' && window.history.replaceState) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('demo');
+                    window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-white text-rose-600 hover:bg-rose-50 font-bold text-xs tracking-wider transition-all shadow-md hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Return to Live Data</span>
+              </button>
+            </div>
+          )}
+
           {children}
         </main>
 

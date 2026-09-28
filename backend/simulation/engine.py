@@ -223,8 +223,8 @@ class SimulationEngine:
                 "status": "Open"
             })
 
-    def inject_scenario_1_spike(self, target_id: str = "AWS-003"):
-        """SIH Scenario 1: Catastrophic 55°C temperature spike on AWS-003 (Pune)."""
+    def inject_scenario_1_spike(self, target_id: str = "AWS-001"):
+        """SIH Scenario 1: Catastrophic 55°C temperature spike on AWS-001 (Chennai)."""
         self.injected_overrides[target_id] = {
             "type": "spike",
             "value": 55.0,
@@ -346,8 +346,8 @@ class SimulationEngine:
         if has_regional:
             brief += "1 regional pattern (Pune-Mumbai corridor) appears spatially consistent with a genuine meteorological front. "
 
-        if any(s["id"] == "AWS-003" and s["status"] == "critical" for s in self.stations):
-            brief += "AWS-003 (Pune Pashan) requires immediate inspection due to an extreme +27.2°C thermal excursion."
+        if any(s["id"] == "AWS-001" and s["status"] == "critical" for s in self.stations):
+            brief += "AWS-001 (Chennai Meenambakkam) requires immediate inspection due to an extreme +25.2°C thermal excursion."
         else:
             brief += "Automated spatial-temporal self-healing is active."
 

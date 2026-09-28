@@ -51,8 +51,8 @@ export const SimulationLabPage: React.FC<SimulationLabPageProps> = ({
     {
       id: 'scenario_1_spike',
       title: '1. Catastrophic Sensor Spike (55°C)',
-      target: 'AWS-003 (Pune)',
-      desc: 'Simulates sudden transducer fault on Pune (AWS-003). Spikes temperature from nominal 27.8°C to 55°C. AI identifies isolated departure, validates physical limit breach, and computes IDW imputed value.',
+      target: 'AWS-001 (Chennai)',
+      desc: 'Simulates sudden transducer fault on Chennai (AWS-001). Spikes temperature from nominal 29.8°C to 55°C. AI identifies isolated departure, validates physical limit breach, and computes IDW imputed value.',
       icon: Flame,
       color: 'bg-red-50 text-red-600 border-red-200'
     },

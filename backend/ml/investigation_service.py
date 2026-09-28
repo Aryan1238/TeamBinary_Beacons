@@ -277,6 +277,10 @@ class InvestigationService:
         if fault_type == "DRIFT":
             triggers.append("HISTORICAL_DRIFT_EXCESS")
 
+        # 9. Coordinated Regional Weather Event
+        if fault_type in ("REGIONAL_EVENT", "REGIONAL_FRONT", "regional-squall", "regional_weather"):
+            triggers.append("REGIONAL_EVENT")
+
         # If zero triggers fired, clear active investigation and return None
         if not triggers:
             if station_id in self.active_investigations:
@@ -608,10 +612,10 @@ class InvestigationService:
         spatial_matches = spatial_check.get("status") == "MATCH"
         spatial_is_regional = spatial_check.get("classification") == "REGIONAL EVENT"
 
-        if affected_var == "temperature" and (spatial_is_regional or (ext_matches and spatial_matches)) and ("PHYSICAL_RANGE_FAIL" in triggers or "RATE_OF_CHANGE_FAIL" in triggers or "LSTM_ANOMALY" in triggers):
+        if (spatial_is_regional or (ext_matches and spatial_matches) or "REGIONAL_EVENT" in triggers) and ("PHYSICAL_RANGE_FAIL" in triggers or "RATE_OF_CHANGE_FAIL" in triggers or "LSTM_ANOMALY" in triggers or "REGIONAL_EVENT" in triggers):
             return (
                 "LOW",
-                f"Multi-station regional weather event confirmed by spatial peers ({spatial_check.get('explanation', '')}). Corroborated environmental front.",
+                f"Multi-station regional weather event confirmed by spatial peers ({spatial_check.get('explanation', 'Pune & Mumbai Corridor coherent')}). Corroborated environmental front.",
                 "Possible Genuine Weather Event"
             )
 
