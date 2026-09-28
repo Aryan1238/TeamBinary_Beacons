@@ -256,7 +256,9 @@ class InvestigationService:
 
         # 5. Spatial Consensus Mismatch
         if spatial_check["status"] == "MISMATCH":
-            triggers.append("SPATIAL_MISMATCH")
+            if spatial_check.get("confidence") != "LOW" or (spatial_check.get("diff") or 0.0) > 3.5:
+                triggers.append("SPATIAL_MISMATCH")
+
 
         # 6. Communication Failure
         is_comm_fault = (
@@ -456,27 +458,6 @@ class InvestigationService:
                     "status": "Deviating with Target" if (confirms and abs(target_delta) > 2.0) else "Nominal / Baseline"
                 })
 
-        # 2. Fallback against station metadata baseline cluster if cache has no neighbors
-        if not neighbors:
-            for sid, meta in STATION_METADATA.items():
-                if sid == station_id or sid.startswith("4"): # Avoid alias duplicates
-                    continue
-                d = haversine_km(lat, lon, meta["lat"], meta["lon"])
-                if d <= SPATIAL_RADIUS_KM:
-                    mid_temp = (meta["min_temp"] + meta["max_temp"]) / 2.0
-                    pdelta = 0.0
-                    confirms = (abs(target_delta) <= 2.0)
-                    neighbors.append({
-                        "station_id": sid,
-                        "station_name": meta["name"],
-                        "distance_km": round(d, 1),
-                        "value": round(mid_temp, 2),
-                        "expected_midpoint": round(mid_temp, 1),
-                        "delta": pdelta,
-                        "confirms_target": confirms,
-                        "status": "Climatological Baseline"
-                    })
-
         neighbors.sort(key=lambda x: x["distance_km"])
         k_neighbors = neighbors[:3]
         peer_count = len(k_neighbors)
@@ -488,7 +469,7 @@ class InvestigationService:
                 "classification": "INSUFFICIENT EVIDENCE",
                 "confidence": "NONE",
                 "peer_basis": "no peer stations within 150km",
-                "explanation": "No peer AWS stations within 150km radius. Spatial correlation cannot be evaluated.",
+                "explanation": "No operational peer AWS stations within 150km radius. Spatial correlation cannot be evaluated until peer telemetry is active.",
                 "neighbor_count": 0,
                 "expected_value": None,
                 "diff": None,
@@ -496,11 +477,13 @@ class InvestigationService:
                 "neighbors": []
             }
 
-        # Calculate IDW expected temperature
+        # Calculate IDW expected temperature using peer anomaly deltas (accounts for local station elevations/baselines)
         weights = [1.0 / max(n["distance_km"], 5.0) for n in k_neighbors]
         sum_w = sum(weights)
-        idw_expected = sum(n["value"] * w for n, w in zip(k_neighbors, weights)) / sum_w
+        idw_peer_delta = sum(n["delta"] * w for n, w in zip(k_neighbors, weights)) / sum_w
+        idw_expected = target_mid + idw_peer_delta
         diff = round(abs(temp - idw_expected), 2)
+
 
         # CASE 2: 1 valid peer within <= 150km -> Confidence: LOW
         if peer_count == 1:
@@ -508,18 +491,18 @@ class InvestigationService:
             confidence = "LOW"
             peer_basis = "based on 1 peer station"
             
-            if abs(target_delta) > 2.0 and peer["confirms_target"]:
+            if diff <= 3.5:
+                classification = "REGIONAL EVENT"
+                status = "MATCH"
+                explanation = f"Target and peer {peer['station_name']} ({peer['distance_km']}km) demonstrate coherent regional atmospheric baseline (diff: {diff:.1f}°C <= 3.5°C)."
+            elif abs(target_delta) > 2.0 and peer["confirms_target"]:
                 classification = "REGIONAL EVENT"
                 status = "MATCH"
                 explanation = f"Single peer {peer['station_name']} ({peer['distance_km']}km) confirms same-direction deviation ({peer['delta']:+.1f}°C vs target {target_delta:+.1f}°C, >=50% magnitude). Low confidence based on 1 peer station."
-            elif abs(target_delta) <= 2.0 and diff <= 3.5:
-                classification = "REGIONAL EVENT"
-                status = "MATCH"
-                explanation = f"Target and peer {peer['station_name']} ({peer['distance_km']}km) both report nominal diurnal baseline values."
             else:
                 classification = "ISOLATED SENSOR ANOMALY"
                 status = "MISMATCH"
-                explanation = f"Single peer {peer['station_name']} ({peer['distance_km']}km) contradicts deviation (peer {peer['delta']:+.1f}°C vs target {target_delta:+.1f}°C). Low confidence based on 1 peer station."
+                explanation = f"Single peer {peer['station_name']} ({peer['distance_km']}km) contradicts deviation (diff: {diff:.1f}°C > 3.5°C, peer {peer['delta']:+.1f}°C vs target {target_delta:+.1f}°C). Low confidence based on 1 peer station."
 
             return {
                 "status": status,
@@ -539,18 +522,19 @@ class InvestigationService:
         peer_basis = f"based on {peer_count} peer stations"
         confirming_peers = sum(1 for n in k_neighbors if n["confirms_target"])
 
-        if abs(target_delta) > 2.0 and confirming_peers >= 2:
+        if diff <= 3.5:
+            classification = "REGIONAL EVENT"
+            status = "MATCH"
+            explanation = f"All {peer_count} peers within 150km demonstrate coherent regional atmospheric baseline (diff: {diff:.1f}°C <= 3.5°C)."
+        elif abs(target_delta) > 2.0 and confirming_peers >= 2:
             classification = "REGIONAL EVENT"
             status = "MATCH"
             explanation = f"{confirming_peers} of {peer_count} peers within 150km confirm same-direction deviation (>=50% magnitude). High confidence regional meteorological event."
-        elif abs(target_delta) <= 2.0 and diff <= 3.5:
-            classification = "REGIONAL EVENT"
-            status = "MATCH"
-            explanation = f"All {peer_count} peers within 150km demonstrate coherent regional atmospheric baseline."
         else:
             classification = "ISOLATED SENSOR ANOMALY"
             status = "MISMATCH"
-            explanation = f"Peers within 150km remain nominal or contradict deviation. High confidence isolated sensor anomaly."
+            explanation = f"Peers within 150km remain nominal or contradict deviation (diff: {diff:.1f}°C > 3.5°C). High confidence isolated sensor anomaly."
+
 
         return {
             "status": status,

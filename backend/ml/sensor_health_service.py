@@ -139,12 +139,12 @@ SENSOR_INFO = {
 # Nominal telemetry baselines
 DEFAULT_TELEMETRY = {
     "AWS-001": {"temperature": 29.8, "humidity": 78.0, "pressure": 1009.4, "wind": 15.2, "rainfall": 0.0},
-    "AWS-002": {"temperature": 24.6, "humidity": 65.0, "pressure": 918.2, "wind": 11.8, "rainfall": 0.0},
-    "AWS-003": {"temperature": 27.8, "humidity": 58.0, "pressure": 948.5, "wind": 8.6, "rainfall": 0.0},
+    "AWS-002": {"temperature": 24.6, "humidity": 65.0, "pressure": 1012.4, "wind": 11.8, "rainfall": 0.0},
+    "AWS-003": {"temperature": 27.8, "humidity": 58.0, "pressure": 1011.6, "wind": 8.6, "rainfall": 0.0},
     "AWS-004": {"temperature": 30.5, "humidity": 79.0, "pressure": 1008.2, "wind": 21.0, "rainfall": 0.0},
     "AWS-005": {"temperature": 31.2, "humidity": 82.0, "pressure": 1010.5, "wind": 9.4, "rainfall": 0.0},
     "AWS-006": {"temperature": 33.4, "humidity": 42.0, "pressure": 1004.8, "wind": 12.1, "rainfall": 0.0},
-    "AWS-007": {"temperature": 28.9, "humidity": 61.0, "pressure": 954.2, "wind": 10.5, "rainfall": 0.0},
+    "AWS-007": {"temperature": 28.9, "humidity": 61.0, "pressure": 1010.8, "wind": 10.5, "rainfall": 0.0},
 }
 
 

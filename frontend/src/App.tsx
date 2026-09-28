@@ -392,6 +392,7 @@ export function App() {
           <SIHDemoController
             onTriggerScenario={handleTriggerScenario}
             onReset={handleResetSimulation}
+            currentMode={mode}
           />
           <CopilotModal
             isOpen={copilotOpen}

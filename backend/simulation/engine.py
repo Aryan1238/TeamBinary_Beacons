@@ -9,50 +9,13 @@ except ImportError:
     from ml.anomaly_engine import AnomalyDetectionEngine
 
 INITIAL_STATIONS = [
-    # Maharashtra cluster
-    {"id": "AWS-MH-042", "name": "Pune Pashan", "state": "Maharashtra", "region": "Western", "lat": 18.5362, "lon": 73.8052, "elevation": 560, "temp_base": 28.5, "press_base": 955.0, "rh_base": 62.0},
-    {"id": "AWS-MH-001", "name": "Mumbai Santacruz", "state": "Maharashtra", "region": "Western", "lat": 19.0896, "lon": 72.8656, "elevation": 14, "temp_base": 31.2, "press_base": 1008.5, "rh_base": 78.0},
-    {"id": "AWS-MH-019", "name": "Mahabaleshwar Observatory", "state": "Maharashtra", "region": "Western", "lat": 17.9237, "lon": 73.6586, "elevation": 1372, "temp_base": 21.0, "press_base": 865.0, "rh_base": 88.0},
-    {"id": "AWS-MH-014", "name": "Nashik Ozar", "state": "Maharashtra", "region": "Western", "lat": 20.1199, "lon": 73.9135, "elevation": 579, "temp_base": 29.1, "press_base": 952.0, "rh_base": 58.0},
-    {"id": "AWS-MH-033", "name": "Kolhapur Ujalaiwadi", "state": "Maharashtra", "region": "Western", "lat": 16.6644, "lon": 74.2817, "elevation": 570, "temp_base": 29.8, "press_base": 954.0, "rh_base": 65.0},
-    {"id": "AWS-MH-088", "name": "Nagpur Sonegaon", "state": "Maharashtra", "region": "Central", "lat": 21.0922, "lon": 79.0511, "elevation": 310, "temp_base": 33.5, "press_base": 982.0, "rh_base": 45.0},
-
-    # Delhi NCR cluster
-    {"id": "AWS-DL-001", "name": "Delhi Safdarjung", "state": "Delhi", "region": "Northern", "lat": 28.5843, "lon": 77.2066, "elevation": 216, "temp_base": 30.5, "press_base": 992.0, "rh_base": 52.0},
-    {"id": "AWS-DL-004", "name": "Delhi Lodhi Road", "state": "Delhi", "region": "Northern", "lat": 28.5910, "lon": 77.2270, "elevation": 211, "temp_base": 30.8, "press_base": 992.5, "rh_base": 50.0},
-    {"id": "AWS-DL-008", "name": "Delhi Ridge", "state": "Delhi", "region": "Northern", "lat": 28.6732, "lon": 77.1643, "elevation": 230, "temp_base": 31.2, "press_base": 990.0, "rh_base": 48.0},
-
-    # Rajasthan cluster
-    {"id": "AWS-RJ-012", "name": "Jaipur Sanganer", "state": "Rajasthan", "region": "Northern", "lat": 26.8242, "lon": 75.8122, "elevation": 385, "temp_base": 34.0, "press_base": 974.0, "rh_base": 38.0},
-    {"id": "AWS-RJ-045", "name": "Jodhpur Airport", "state": "Rajasthan", "region": "Northern", "lat": 26.2510, "lon": 73.0485, "elevation": 218, "temp_base": 35.8, "press_base": 988.0, "rh_base": 30.0},
-    {"id": "AWS-RJ-078", "name": "Bikaner PBM", "state": "Rajasthan", "region": "Northern", "lat": 28.0180, "lon": 73.3175, "elevation": 242, "temp_base": 36.2, "press_base": 986.0, "rh_base": 28.0},
-
-    # Gujarat
-    {"id": "AWS-GJ-022", "name": "Ahmedabad Hansol", "state": "Gujarat", "region": "Western", "lat": 23.0734, "lon": 72.6347, "elevation": 55, "temp_base": 33.2, "press_base": 1004.0, "rh_base": 55.0},
-    {"id": "AWS-GJ-051", "name": "Surat Dumas", "state": "Gujarat", "region": "Western", "lat": 21.1126, "lon": 72.7411, "elevation": 12, "temp_base": 32.0, "press_base": 1009.0, "rh_base": 74.0},
-
-    # Karnataka
-    {"id": "AWS-KA-007", "name": "Bengaluru HAL", "state": "Karnataka", "region": "Southern", "lat": 12.9500, "lon": 77.6680, "elevation": 888, "temp_base": 26.2, "press_base": 920.0, "rh_base": 68.0},
-    {"id": "AWS-KA-034", "name": "Mangaluru Panambur", "state": "Karnataka", "region": "Southern", "lat": 12.9510, "lon": 74.8080, "elevation": 18, "temp_base": 30.2, "press_base": 1009.0, "rh_base": 82.0},
-
-    # Tamil Nadu
-    {"id": "AWS-TN-003", "name": "Chennai Meenambakkam", "state": "Tamil Nadu", "region": "Southern", "lat": 12.9941, "lon": 80.1809, "elevation": 16, "temp_base": 32.8, "press_base": 1008.0, "rh_base": 75.0},
-    {"id": "AWS-TN-026", "name": "Coimbatore Peelamedu", "state": "Tamil Nadu", "region": "Southern", "lat": 11.0297, "lon": 77.0434, "elevation": 409, "temp_base": 28.9, "press_base": 969.0, "rh_base": 62.0},
-
-    # Kerala
-    {"id": "AWS-KL-002", "name": "Kochi Naval Base", "state": "Kerala", "region": "Southern", "lat": 9.9312, "lon": 76.2673, "elevation": 3, "temp_base": 29.5, "press_base": 1010.0, "rh_base": 84.0},
-    {"id": "AWS-KL-018", "name": "Thiruvananthapuram VSSC", "state": "Kerala", "region": "Southern", "lat": 8.5241, "lon": 76.9366, "elevation": 29, "temp_base": 30.1, "press_base": 1008.0, "rh_base": 80.0},
-
-    # West Bengal
-    {"id": "AWS-WB-005", "name": "Kolkata Alipore", "state": "West Bengal", "region": "Eastern", "lat": 22.5312, "lon": 88.3278, "elevation": 6, "temp_base": 31.5, "press_base": 1007.5, "rh_base": 79.0},
-    {"id": "AWS-WB-021", "name": "Siliguri Matigara", "state": "West Bengal", "region": "Eastern", "lat": 26.7162, "lon": 88.3953, "elevation": 122, "temp_base": 27.2, "press_base": 998.0, "rh_base": 76.0},
-
-    # Assam
-    {"id": "AWS-AS-010", "name": "Guwahati Borjhar", "state": "Assam", "region": "North-Eastern", "lat": 26.1061, "lon": 91.5859, "elevation": 54, "temp_base": 28.0, "press_base": 1003.0, "rh_base": 81.0},
-
-    # Uttar Pradesh
-    {"id": "AWS-UP-014", "name": "Lucknow Amausi", "state": "Uttar Pradesh", "region": "Northern", "lat": 26.7606, "lon": 80.8893, "elevation": 123, "temp_base": 31.8, "press_base": 999.0, "rh_base": 56.0},
-    {"id": "AWS-UP-038", "name": "Varanasi Babatpur", "state": "Uttar Pradesh", "region": "Northern", "lat": 25.4497, "lon": 82.8596, "elevation": 81, "temp_base": 32.2, "press_base": 1002.0, "rh_base": 58.0}
+    {"id": "AWS-001", "name": "Chennai Meenambakkam", "state": "Tamil Nadu", "region": "Southern", "lat": 12.9900, "lon": 80.1693, "elevation": 16, "temp_base": 29.8, "press_base": 1009.4, "rh_base": 78.0},
+    {"id": "AWS-002", "name": "Bengaluru HAL Airport", "state": "Karnataka", "region": "Southern", "lat": 12.9500, "lon": 77.6680, "elevation": 888, "temp_base": 24.6, "press_base": 1012.4, "rh_base": 65.0},
+    {"id": "AWS-003", "name": "Pune Pashan", "state": "Maharashtra", "region": "Western", "lat": 18.5800, "lon": 73.9197, "elevation": 592, "temp_base": 27.8, "press_base": 1011.6, "rh_base": 58.0},
+    {"id": "AWS-004", "name": "Mumbai Santacruz", "state": "Maharashtra", "region": "Western", "lat": 19.0886, "lon": 72.8679, "elevation": 14, "temp_base": 30.5, "press_base": 1008.2, "rh_base": 79.0},
+    {"id": "AWS-005", "name": "Kolkata Dum Dum Intl", "state": "West Bengal", "region": "Eastern", "lat": 22.6547, "lon": 88.4467, "elevation": 6, "temp_base": 31.2, "press_base": 1010.5, "rh_base": 82.0},
+    {"id": "AWS-006", "name": "Ahmedabad Sardar Patel", "state": "Gujarat", "region": "Western", "lat": 23.0725, "lon": 72.6347, "elevation": 55, "temp_base": 33.4, "press_base": 1004.8, "rh_base": 42.0},
+    {"id": "AWS-007", "name": "Hyderabad Begumpet", "state": "Telangana", "region": "Southern", "lat": 17.4531, "lon": 78.4676, "elevation": 531, "temp_base": 28.9, "press_base": 1010.8, "rh_base": 61.0},
 ]
 
 class SimulationEngine:
@@ -113,64 +76,9 @@ class SimulationEngine:
             self.history[f"{st['id']}_press"] = [st["pressure"]] * 10
             self.history[f"{st['id']}_rh"] = [st["humidity"]] * 10
 
-        # Inject 1 mild realistic warning anomaly in background for demonstration
-        self._inject_seed_anomalies()
-
     def _inject_seed_anomalies(self):
-        # Mild drift on AWS-RJ-045 (Jodhpur) for initial realism
-        for st in self.stations:
-            if st["id"] == "AWS-RJ-045":
-                st["sensor_health"] = 81.0
-                st["status"] = "warning"
-                st["risk_level"] = "MODERATE"
-                seed_ano = {
-                    "id": "ANO-INIT01",
-                    "timestamp": datetime.now().strftime("%H:%M:%S"),
-                    "station_id": st["id"],
-                    "station_name": st["name"],
-                    "parameter": "Temperature",
-                    "observed_value": 39.8,
-                    "expected_value": 35.8,
-                    "deviation": 4.0,
-                    "anomaly_score": 0.56,
-                    "confidence": 88.2,
-                    "severity": "WARNING",
-                    "anomaly_type": "Sensor Drift",
-                    "root_cause": "Calibration drift",
-                    "root_cause_breakdown": [
-                        {"cause": "Calibration drift", "probability": 0.65},
-                        {"cause": "Environmental boundary turbulence", "probability": 0.25},
-                        {"cause": "Sensor malfunction", "probability": 0.10}
-                    ],
-                    "is_genuine_weather": False,
-                    "feature_contributions": [
-                        {"feature": "Temporal deviation", "importance": 0.40, "direction": "+"},
-                        {"feature": "Spatial inconsistency", "importance": 0.35, "direction": "+"},
-                        {"feature": "Humidity mismatch", "importance": 0.15, "direction": "+"},
-                        {"feature": "Pressure relationship", "importance": 0.10, "direction": "+"}
-                    ],
-                    "explanation": "Observed gradual positive drift (+4.0°C) over 48 hours relative to regional IDW baseline. Thermistor calibration required.",
-                    "corrected_value": 36.2,
-                    "correction_confidence": 91.5,
-                    "status": "Investigating",
-                    "accepted_correction": False,
-                    "data_lineage": {"method": "Drift_Bias_Offset"}
-                }
-                self.active_anomalies.append(seed_ano)
-
-                self.maintenance_tickets.append({
-                    "id": "MNT-001",
-                    "station_id": st["id"],
-                    "station_name": st["name"],
-                    "sensor": "Temperature Sensor (PT100)",
-                    "health": 81.0,
-                    "priority": "MEDIUM",
-                    "anomaly_frequency": "Moderate",
-                    "drift_status": "Progressive Positive (+0.12°C/day)",
-                    "recommended_action": "Schedule field calibration during monthly cycle",
-                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                    "status": "Open"
-                })
+        # Pristine baseline: no spurious or fabricated seed anomalies
+        pass
 
     def tick(self) -> List[Dict[str, Any]]:
         """
@@ -315,8 +223,8 @@ class SimulationEngine:
                 "status": "Open"
             })
 
-    def inject_scenario_1_spike(self, target_id: str = "AWS-MH-042"):
-        """SIH Scenario 1: Catastrophic 55°C temperature spike on AWS-MH-042."""
+    def inject_scenario_1_spike(self, target_id: str = "AWS-003"):
+        """SIH Scenario 1: Catastrophic 55°C temperature spike on AWS-003 (Pune)."""
         self.injected_overrides[target_id] = {
             "type": "spike",
             "value": 55.0,
@@ -332,12 +240,12 @@ class SimulationEngine:
 
     def inject_scenario_2_regional(self):
         """
-        SIH Scenario 2: Coordinated regional weather phenomenon across 5 neighboring
-        Western Ghats / Maharashtra stations (Pune, Mumbai, Mahabaleshwar, Nashik, Kolhapur).
-        All 5 stations drop temperature by ~7-8°C, spike humidity to 92-98%, and drop pressure by 9 hPa.
-        AI compares spatial consensus and marks it as 'Genuine Meteorological Event' with 96% confidence!
+        SIH Scenario 2: Coordinated regional weather phenomenon across neighboring
+        Pune & Mumbai corridor stations (AWS-003 & AWS-004, within 125km separation).
+        Both stations drop temperature by ~7.5°C, surge humidity to 82-98%, and drop pressure by 9 hPa.
+        AI compares spatial consensus and marks it as 'Genuine Meteorological Event'!
         """
-        regional_targets = ["AWS-MH-042", "AWS-MH-001", "AWS-MH-019", "AWS-MH-014", "AWS-MH-033"]
+        regional_targets = ["AWS-003", "AWS-004"]
         for target_id in regional_targets:
             self.injected_overrides[target_id] = {
                 "type": "regional",
@@ -436,10 +344,10 @@ class SimulationEngine:
             brief += "Sensor transducers operating within nominal tolerances. "
 
         if has_regional:
-            brief += "1 regional pattern (Western Ghats) appears spatially consistent with a genuine meteorological front. "
+            brief += "1 regional pattern (Pune-Mumbai corridor) appears spatially consistent with a genuine meteorological front. "
 
-        if any(s["id"] == "AWS-MH-042" and s["status"] == "critical" for s in self.stations):
-            brief += "AWS-MH-042 (Pune Pashan) requires immediate inspection due to an extreme +23.8°C thermal excursion."
+        if any(s["id"] == "AWS-003" and s["status"] == "critical" for s in self.stations):
+            brief += "AWS-003 (Pune Pashan) requires immediate inspection due to an extreme +27.2°C thermal excursion."
         else:
             brief += "Automated spatial-temporal self-healing is active."
 

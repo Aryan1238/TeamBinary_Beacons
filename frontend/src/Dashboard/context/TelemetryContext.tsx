@@ -161,6 +161,17 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [telemetryAlerts, setTelemetryAlerts] = useState<Record<string, string | null>>({});
   const [activeInvestigations, setActiveInvestigations] = useState<Record<string, InvestigationRecord>>({});
 
+  const historyBuffersRef = useRef<Record<string, HistoryPoint[]>>(historyBuffers);
+  historyBuffersRef.current = historyBuffers;
+  const recentReadingsRef = useRef<Record<string, TelemetryLogEntry[]>>(recentReadings);
+  recentReadingsRef.current = recentReadings;
+  const activeFaultsRef = useRef<Record<string, ActiveFault>>(activeFaults);
+  activeFaultsRef.current = activeFaults;
+  const streamSourcesRef = useRef<Record<string, 'Meteostat' | 'NOAA'>>(streamSources);
+  streamSourcesRef.current = streamSources;
+  const tickCountRef = useRef<number>(tickCount);
+  tickCountRef.current = tickCount;
+
   // Polling active investigations from backend to stay in sync with API evaluations and test scripts
   useEffect(() => {
     const fetchActive = () => {
@@ -250,8 +261,13 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     let skipHistory = false;
 
     if (!fault) {
-      // 1. Normal temperature bounded random walk (±0.15°C) with diurnal bias
-      const tempDelta = (Math.random() * 0.3 - 0.15);
+      // 1. Normal temperature bounded random walk with non-zero micro-fluctuation guard (nominal only)
+      // Ensures delta is outside [-0.05, +0.05] so nominal random walk never rounds to identical values across 4+ ticks
+      let rawDelta = (Math.random() * 0.3 - 0.15);
+      if (Math.abs(rawDelta) < 0.06) {
+        rawDelta = rawDelta >= 0 ? 0.08 : -0.08;
+      }
+      const tempDelta = rawDelta;
       temp = Math.round((temp + tempDelta) * 10) / 10;
       temp = Math.max(station.sensors.temperature.expectedMin - 0.5, Math.min(station.sensors.temperature.expectedMax + 0.5, temp));
 
@@ -462,7 +478,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const nextRecentReadings: Record<string, TelemetryLogEntry[]> = {};
 
       const nextStations = prevStations.map((station) => {
-        const fault = activeFaults[station.id];
+        const fault = activeFaultsRef.current[station.id];
         const isCommFailure = fault?.faultType === 'communication-failure' || fault?.faultType === 'communication_failure';
 
         const { updatedStation, newHistoryPoint, newLogEntry, skipHistory } = generateStationUpdate(
@@ -472,7 +488,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         );
 
         // Update rolling history buffer (bounded queue)
-        const currentBuffer = historyBuffers[station.id] || [];
+        const currentBuffer = historyBuffersRef.current[station.id] || [];
         if (!skipHistory && newHistoryPoint) {
           const updatedBuffer = [...currentBuffer, newHistoryPoint];
           if (updatedBuffer.length > MAX_HISTORY_BUFFER_SIZE) {
@@ -485,7 +501,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
 
         // Update recent readings log (bounded queue)
-        const currentLogs = recentReadings[station.id] || [];
+        const currentLogs = recentReadingsRef.current[station.id] || [];
         if (!isCommFailure && newLogEntry) {
           nextRecentReadings[station.id] = [newLogEntry, ...currentLogs.slice(0, MAX_RECENT_READINGS_SIZE - 1)];
         } else if (isCommFailure && fault && fault.ticksActive === 0 && newLogEntry) {
@@ -497,8 +513,13 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
 
         // Evaluate ML status & availability alerts
-        const source = streamSources[station.id] || 'Meteostat';
+        const source = streamSourcesRef.current[station.id] || 'Meteostat';
         const isExcluded = source === 'NOAA' && ['AWS-002', 'AWS-003', 'AWS-004'].includes(station.id);
+
+        const currentTick = tickCountRef.current || 0;
+        const simDate = new Date(Date.now() + currentTick * 3600 * 1000);
+        const simTimestamp = simDate.toISOString();
+        const windMs = Math.round((updatedStation.sensors.wind.value / 3.6) * 100) / 100;
 
         if (isCommFailure) {
           // STEP 3: COMMUNICATION_FAILURE must NOT be routed through the LSTM
@@ -507,35 +528,98 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             ...prev,
             [station.id]: `NO DATA — link down for ${hoursDown}h`,
           }));
-        } else if (isExcluded) {
-          // STEP 1: NOAA Mumbai, Pune, Bengaluru are 3-hourly cadence and excluded from LSTM
-          setTelemetryAlerts((prev) => ({ ...prev, [station.id]: null }));
-          setMlResults((prev) => ({
-            ...prev,
-            [station.id]: {
-              status: 'NOT_APPLICABLE (3h cadence)',
-              reconstructionError: null,
-              threshold: FROZEN_THRESHOLD,
-              errorRatio: null,
-              warmupStep: 0,
-              dominantFeature: 'Not applicable (3h cadence)',
-              source: 'NOAA',
-              stationId: station.id,
-              message: '3-hourly cadence series excluded from LSTM Autoencoder. Routed to rule-based checks only.',
-              updatedAt: timeString,
-            },
-          }));
-        } else {
-          setTelemetryAlerts((prev) => ({ ...prev, [station.id]: null }));
-          // Submit packet to local LSTM Inference service
-          const packetPayload = {
-            station_id: source === 'NOAA' ? (station.noaaId || station.id) : (station.meteostatId || station.id),
+          const invPayload = {
+            station_id: station.id,
             source,
-            timestamp: new Date().toISOString(),
+            timestamp: simTimestamp,
             temperature: updatedStation.sensors.temperature.value,
             humidity: updatedStation.sensors.humidity.value,
             pressure: updatedStation.sensors.pressure.value,
-            wind_speed: updatedStation.sensors.wind.value,
+            wind_speed: windMs,
+            wind_direction: 180.0,
+            fault_type: fault ? fault.faultType : 'NORMAL',
+            affected_feature: fault ? fault.sensor : 'None',
+            comm_failure_hours: hoursDown,
+            ml_result: null,
+          };
+          fetch(`${API_BASE}/investigation/evaluate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(invPayload),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data && data.has_investigation && data.investigation) {
+                setActiveInvestigations((prev) => ({ ...prev, [station.id]: data.investigation }));
+              }
+            })
+            .catch(() => {});
+        } else if (isExcluded) {
+          // STEP 1: NOAA Mumbai, Pune, Bengaluru are 3-hourly cadence and excluded from LSTM
+          setTelemetryAlerts((prev) => ({ ...prev, [station.id]: null }));
+          const notAppML: MLInferenceResult = {
+            status: 'NOT_APPLICABLE (3h cadence)',
+            reconstructionError: null,
+            threshold: FROZEN_THRESHOLD,
+            errorRatio: null,
+            warmupStep: 0,
+            dominantFeature: 'Not applicable (3h cadence)',
+            source: 'NOAA',
+            stationId: station.id,
+            message: '3-hourly cadence series excluded from LSTM Autoencoder. Routed to rule-based checks only.',
+            updatedAt: timeString,
+          };
+          setMlResults((prev) => ({
+            ...prev,
+            [station.id]: notAppML,
+          }));
+
+          const invPayload = {
+            station_id: station.id,
+            source,
+            timestamp: simTimestamp,
+            temperature: updatedStation.sensors.temperature.value,
+            humidity: updatedStation.sensors.humidity.value,
+            pressure: updatedStation.sensors.pressure.value,
+            wind_speed: windMs,
+            wind_direction: 180.0,
+            fault_type: fault ? fault.faultType : 'NORMAL',
+            affected_feature: fault ? fault.sensor : 'None',
+            comm_failure_hours: 0,
+            ml_result: notAppML,
+          };
+          fetch(`${API_BASE}/investigation/evaluate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(invPayload),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data && data.has_investigation && data.investigation) {
+                setActiveInvestigations((prev) => ({ ...prev, [station.id]: data.investigation }));
+              } else {
+                setActiveInvestigations((prev) => {
+                  if (prev[station.id]) {
+                    const next = { ...prev };
+                    delete next[station.id];
+                    return next;
+                  }
+                  return prev;
+                });
+              }
+            })
+            .catch(() => {});
+        } else {
+          setTelemetryAlerts((prev) => ({ ...prev, [station.id]: null }));
+          // Submit packet to local LSTM Inference service exactly ONCE
+          const packetPayload = {
+            station_id: source === 'NOAA' ? (station.noaaId || station.id) : (station.meteostatId || station.id),
+            source,
+            timestamp: simTimestamp,
+            temperature: updatedStation.sensors.temperature.value,
+            humidity: updatedStation.sensors.humidity.value,
+            pressure: updatedStation.sensors.pressure.value,
+            wind_speed: windMs,
             wind_direction: 180.0,
             fault_type: fault ? fault.faultType : 'NORMAL',
             affected_feature: fault ? fault.sensor : 'None',
@@ -565,49 +649,50 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                   },
                 }));
               }
+
+              // Chain to /investigation/evaluate passing ml_result to eliminate duplicate inference calls
+              const invPayload = {
+                station_id: station.id,
+                source,
+                timestamp: simTimestamp,
+                temperature: updatedStation.sensors.temperature.value,
+                humidity: updatedStation.sensors.humidity.value,
+                pressure: updatedStation.sensors.pressure.value,
+                wind_speed: windMs,
+                wind_direction: 180.0,
+                fault_type: fault ? fault.faultType : 'NORMAL',
+                affected_feature: fault ? fault.sensor : 'None',
+                comm_failure_hours: 0,
+                ml_result: data,
+              };
+
+              fetch(`${API_BASE}/investigation/evaluate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(invPayload),
+              })
+                .then((res) => res.json())
+                .then((evalData) => {
+                  if (evalData && evalData.has_investigation && evalData.investigation) {
+                    setActiveInvestigations((prev) => ({
+                      ...prev,
+                      [station.id]: evalData.investigation,
+                    }));
+                  } else {
+                    setActiveInvestigations((prev) => {
+                      if (prev[station.id]) {
+                        const next = { ...prev };
+                        delete next[station.id];
+                        return next;
+                      }
+                      return prev;
+                    });
+                  }
+                })
+                .catch(() => {});
             })
             .catch(() => {});
         }
-
-        // STEP 4: Real-time Multi-Layer Anomaly Investigation Engine Evaluation
-        const invPayload = {
-          station_id: station.id,
-          source,
-          timestamp: new Date().toISOString(),
-          temperature: updatedStation.sensors.temperature.value,
-          humidity: updatedStation.sensors.humidity.value,
-          pressure: updatedStation.sensors.pressure.value,
-          wind_speed: updatedStation.sensors.wind.value,
-          wind_direction: 180.0,
-          fault_type: fault ? fault.faultType : 'NORMAL',
-          affected_feature: fault ? fault.sensor : 'None',
-          comm_failure_hours: isCommFailure ? (fault?.ticksActive || 0) + 1 : 0,
-        };
-
-        fetch(`${API_BASE}/investigation/evaluate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(invPayload),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data && data.has_investigation && data.investigation) {
-              setActiveInvestigations((prev) => ({
-                ...prev,
-                [station.id]: data.investigation,
-              }));
-            } else {
-              setActiveInvestigations((prev) => {
-                if (prev[station.id]) {
-                  const next = { ...prev };
-                  delete next[station.id];
-                  return next;
-                }
-                return prev;
-              });
-            }
-          })
-          .catch(() => {});
 
         return updatedStation;
       });
@@ -617,7 +702,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       return nextStations;
     });
-  }, [activeFaults, generateStationUpdate, historyBuffers, recentReadings, streamSources]);
+  }, [generateStationUpdate]);
 
   /**
    * Start Simulation: sets status to RUNNING and creates interval.

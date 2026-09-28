@@ -170,12 +170,47 @@ class SimulationService:
                 "reason": "Historical dataset unavailable"
             }
 
-        # Filter last 24 consecutive hourly readings for this city and Meteostat
-        subset = df[(df["city"] == city) & (df["source"] == "Meteostat")].sort_values("timestamp").tail(24)
-        if len(subset) < 24:
-            subset = df[(df["source"] == "Meteostat")].sort_values("timestamp").tail(24)
-
+        # Filter 24 consecutive hourly readings for this city and Meteostat.
+        # To maintain natural diurnal thermal continuity matching the LSTM model training,
+        # slice 24 consecutive rows ending at the current solar hour.
         now = datetime.now()
+        target_hour = (now.hour - 1) % 24
+        
+        city_df = df[(df["city"] == city) & (df["source"] == "Meteostat")].sort_values("timestamp")
+        if city_df.empty:
+            city_df = df[df["source"] == "Meteostat"].sort_values("timestamp")
+            
+        city_df["_dt_parsed"] = pd.to_datetime(city_df["timestamp"])
+        matching_indices = city_df[city_df["_dt_parsed"].dt.hour == target_hour].index
+        if len(matching_indices) > 0 and len(city_df.loc[:matching_indices[-1]]) >= 24:
+            subset = city_df.loc[:matching_indices[-1]].tail(24)
+        else:
+            subset = city_df.tail(24)
+
+        base_telemetry = DEFAULT_TELEMETRY.get(station_id, {})
+        elev_map = {"AWS-001": 16.0, "AWS-002": 888.0, "AWS-003": 592.0, "AWS-004": 14.0, "AWS-005": 6.0, "AWS-006": 55.0, "AWS-007": 531.0}
+        elev = elev_map.get(str(station_id), 0.0)
+
+        target_temp = base_telemetry.get("temperature")
+        target_press_raw = base_telemetry.get("pressure")
+        if target_press_raw is not None and target_temp is not None and target_press_raw < 980.0 and elev > 30.0:
+            target_p_mslp = target_press_raw * math.exp(0.034163 * elev / (target_temp + 273.15))
+        else:
+            target_p_mslp = target_press_raw
+
+        target_wind_ms = (base_telemetry.get("wind", 10.0) / 3.6) if base_telemetry.get("wind") is not None else None
+        target_hum = base_telemetry.get("humidity")
+
+        last_hist_temp = float(subset.iloc[-1]["temperature"])
+        last_hist_press = float(subset.iloc[-1]["pressure"])
+        last_hist_wind = float(subset.iloc[-1]["wind_speed"])
+        last_hist_hum = float(subset.iloc[-1]["humidity"])
+
+        temp_offset = (target_temp - last_hist_temp) if target_temp is not None else 0.0
+        press_offset = (target_p_mslp - last_hist_press) if target_p_mslp is not None else 0.0
+        wind_offset = (target_wind_ms - last_hist_wind) if target_wind_ms is not None else 0.0
+        hum_offset = (target_hum - last_hist_hum) if target_hum is not None else 0.0
+
         readings = []
         hist_readings = []
         total_rows = len(subset)
@@ -184,30 +219,52 @@ class SimulationService:
             hour_offset = total_rows - i
             reading_dt = now - timedelta(hours=hour_offset)
             ts_str = reading_dt.strftime("%Y-%m-%d %H:%M:%S")
+            t_val = round(float(row["temperature"]) + temp_offset, 1)
+            h_val = max(20.0, min(98.0, round(float(row["humidity"]) + hum_offset, 1)))
+            p_val = round(float(row["pressure"]) + press_offset, 1)
+            w_val = max(0.5, round(float(row["wind_speed"]) + wind_offset, 2))
+            raw_wd = row.get("wind_direction", 180.0)
+            wd_val = float(raw_wd) if not pd.isna(raw_wd) else 180.0
             readings.append({
                 "dt": reading_dt,
                 "station_id": station_id,
                 "source": source,
                 "timestamp": ts_str,
-                "temperature": float(row["temperature"]),
-                "humidity": float(row["humidity"]),
-                "pressure": float(row["pressure"]),
-                "wind_speed": float(row["wind_speed"]),
-                "wind_direction": float(row.get("wind_direction", 180.0)),
+                "temperature": t_val,
+                "humidity": h_val,
+                "pressure": p_val,
+                "wind_speed": w_val,
+                "wind_direction": wd_val,
                 "fault_type": "NORMAL",
                 "affected_feature": "None"
             })
-            hist_readings.append((reading_dt, float(row["temperature"])))
+            hist_readings.append((reading_dt, t_val))
 
-        # Pre-seed buffer in lstm_service
-        key = (str(station_id), source)
-        lstm_service.buffers[key] = readings.copy()
+
+        # Pre-seed buffer in lstm_service (populating both upper and raw case)
+        lstm_service.buffers[(str(station_id), source)] = readings.copy()
+        lstm_service.buffers[(str(station_id), source.upper())] = readings.copy()
         # Also alias numeric id if mapped
         if st_config and st_config.get("meteostat_id"):
             lstm_service.buffers[(str(st_config["meteostat_id"]), source)] = readings.copy()
+            lstm_service.buffers[(str(st_config["meteostat_id"]), source.upper())] = readings.copy()
 
-        # Pre-seed investigation_service history
-        investigation_service.station_readings_history[station_id] = hist_readings.copy()
+        # Pre-seed investigation_service history (both station_id and numeric id)
+        investigation_service.station_readings_history[str(station_id)] = hist_readings.copy()
+        if st_config and st_config.get("meteostat_id"):
+            investigation_service.station_readings_history[str(st_config["meteostat_id"])] = hist_readings.copy()
+
+        # Pre-seed latest station reading cache for cold-start spatial consensus
+        if st_config:
+            investigation_service.latest_station_readings[str(station_id)] = {
+                "station_id": str(station_id),
+                "name": st_config["name"],
+                "lat": st_config["lat"],
+                "lon": st_config["lon"],
+                "temperature": readings[-1]["temperature"],
+                "timestamp": readings[-1]["timestamp"]
+            }
+
 
         start_time = readings[0]["timestamp"]
         end_time = readings[-1]["timestamp"]
@@ -251,7 +308,7 @@ class SimulationService:
         is_3h = (st_config.get("cadence") == "3h") or lstm_service.is_series_excluded(station_id, source)
 
         # Baseline reading
-        base_vals = DEFAULT_TELEMETRY.get(station_id, {"temperature": 27.8, "humidity": 58.0, "pressure": 948.5, "wind": 8.6, "rainfall": 0.0})
+        base_vals = DEFAULT_TELEMETRY.get(station_id, {"temperature": 27.8, "humidity": 58.0, "pressure": 1011.6, "wind": 8.6, "rainfall": 0.0})
         ref_val = base_vals.get(sensor, 25.0)
 
         # Pre-seed buffer if auto_warmup requested and not 3h

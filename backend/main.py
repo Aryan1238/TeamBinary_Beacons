@@ -103,6 +103,13 @@ async def startup_event():
     except Exception as e:
         print(f"[LiveWeather Startup] {e}")
 
+    try:
+        # Pre-warm live LSTM buffers for all 7 stations so startup telemetry starts fully warmed (24/24)
+        for st_id in ["AWS-001", "AWS-002", "AWS-003", "AWS-004", "AWS-005", "AWS-006", "AWS-007"]:
+            simulation_service.warmup_station_buffer(st_id, "Meteostat")
+    except Exception as e:
+        print(f"[Buffer Warmup Startup] {e}")
+
     async def telemetry_broadcast_loop():
         while True:
             await asyncio.sleep(4.0)
@@ -523,32 +530,101 @@ def trigger_scenario(scenario_name: str):
     current_mode = "demo"
 
     if scenario_name == "scenario_1_spike":
-        sim.inject_scenario_1_spike("AWS-MH-042")
+        sim.inject_scenario_1_spike("AWS-003")
+        investigation_service.evaluate_telemetry({
+            "station_id": "AWS-003",
+            "source": "Meteostat",
+            "timestamp": datetime.now().isoformat(),
+            "temperature": 55.0,
+            "humidity": 58.0,
+            "pressure": 1011.6,
+            "wind_speed": 8.6,
+            "wind_direction": 180.0,
+            "fault_type": "SPIKE",
+            "affected_feature": "temperature",
+        })
         return {
             "success": True,
             "mode": "demo",
             "scenario": "Scenario 1: 55°C Catastrophic Spike",
-            "target": "AWS-MH-042",
-            "message": "Switched to DEMO mode. 55°C temperature spike injected on AWS-MH-042."
+            "target": "AWS-003",
+            "message": "Switched to DEMO mode. 55°C temperature spike injected on AWS-003 (Pune)."
         }
     elif scenario_name == "scenario_2_regional":
         sim.inject_scenario_2_regional()
+        investigation_service.latest_station_readings["AWS-004"] = {
+            "station_id": "AWS-004",
+            "name": "Mumbai / Santacruz Intl",
+            "lat": 19.0886,
+            "lon": 72.8679,
+            "temperature": 23.0,
+            "timestamp": datetime.now().isoformat()
+        }
+        investigation_service.evaluate_telemetry({
+            "station_id": "AWS-003",
+            "source": "Meteostat",
+            "timestamp": datetime.now().isoformat(),
+            "temperature": 20.3,
+            "humidity": 82.0,
+            "pressure": 1002.6,
+            "wind_speed": 18.5,
+            "wind_direction": 240.0,
+            "fault_type": "NORMAL",
+            "affected_feature": "temperature",
+        })
         return {
             "success": True,
             "mode": "demo",
             "scenario": "Scenario 2: Regional Genuine Weather Event",
-            "cluster": "Western Ghats (5 stations)",
-            "message": "Switched to DEMO mode. Regional squall front injected across 5 stations."
+            "cluster": "Pune & Mumbai Corridor (AWS-003 & AWS-004)",
+            "message": "Switched to DEMO mode. Regional squall front injected across Pune & Mumbai."
         }
     elif scenario_name == "scenario_freeze":
-        sim.inject_custom("AWS-MH-014", "freeze")
-        return {"success": True, "mode": "demo", "scenario": "Frozen Sensor", "target": "AWS-MH-014"}
+        sim.inject_custom("AWS-002", "freeze")
+        investigation_service.evaluate_telemetry({
+            "station_id": "AWS-002",
+            "source": "Meteostat",
+            "timestamp": datetime.now().isoformat(),
+            "temperature": 24.6,
+            "humidity": 65.0,
+            "pressure": 1012.4,
+            "wind_speed": 11.8,
+            "wind_direction": 180.0,
+            "fault_type": "FREEZE",
+            "affected_feature": "temperature",
+        })
+        return {"success": True, "mode": "demo", "scenario": "Frozen Sensor", "target": "AWS-002"}
     elif scenario_name == "scenario_drift":
-        sim.inject_custom("AWS-RJ-045", "drift")
-        return {"success": True, "mode": "demo", "scenario": "Sensor Drift", "target": "AWS-RJ-045"}
+        sim.inject_custom("AWS-007", "drift")
+        investigation_service.evaluate_telemetry({
+            "station_id": "AWS-007",
+            "source": "NOAA",
+            "timestamp": datetime.now().isoformat(),
+            "temperature": 34.2,
+            "humidity": 61.0,
+            "pressure": 1010.8,
+            "wind_speed": 10.5,
+            "wind_direction": 180.0,
+            "fault_type": "DRIFT",
+            "affected_feature": "temperature",
+        })
+        return {"success": True, "mode": "demo", "scenario": "Sensor Drift", "target": "AWS-007"}
     elif scenario_name == "scenario_offline":
-        sim.inject_custom("AWS-AS-010", "offline")
-        return {"success": True, "mode": "demo", "scenario": "Communication Failure", "target": "AWS-AS-010"}
+        sim.inject_custom("AWS-005", "offline")
+        investigation_service.evaluate_telemetry({
+            "station_id": "AWS-005",
+            "source": "Meteostat",
+            "timestamp": datetime.now().isoformat(),
+            "temperature": 31.2,
+            "humidity": 82.0,
+            "pressure": 1010.5,
+            "wind_speed": 9.4,
+            "wind_direction": 180.0,
+            "fault_type": "COMMUNICATION_FAILURE",
+            "affected_feature": "temperature",
+            "comm_failure_hours": 3.0,
+        }, comm_failure_hours=3.0)
+        return {"success": True, "mode": "demo", "scenario": "Communication Failure", "target": "AWS-005"}
     else:
         raise HTTPException(status_code=400, detail=f"Unknown scenario '{scenario_name}'")
 
@@ -585,6 +661,7 @@ def reset_simulation():
     global current_mode
     current_mode = "live"
     sim.reset()
+    investigation_service.clear_all()
     live_weather_service.fetch_live_weather(force=True)
     return {
         "success": True,
@@ -707,16 +784,16 @@ def ask_copilot(req: CopilotQueryRequest):
         }
     else:
         # In Demo Mode, answer based on the simulated scenarios
-        if "why" in q and ("flagged" in q or "aws-mh-042" in q or "spike" in q):
+        if "why" in q and ("flagged" in q or "aws-003" in q or "pune" in q or "spike" in q):
             return {
                 "answer": (
-                    "In SIH Demo Mode: AWS-MH-042 (Pune) was flagged because an artificial 55.0°C thermal spike was injected. "
-                    "The spatial engine compared 4 neighboring stations (Mumbai, Mahabaleshwar, Nashik, Kolhapur) which showed 0% agreement, "
-                    "classifying it as a Sensor Malfunction with 98% confidence. Estimated corrected value: 31.4°C."
+                    "In SIH Demo Mode: AWS-003 (Pune) was flagged because an artificial 55.0°C thermal spike was injected. "
+                    "The spatial engine compared neighboring station Mumbai (AWS-004, 125km separation) which showed 0% agreement, "
+                    "classifying it as an Isolated Sensor Malfunction with 98% confidence. Estimated corrected value: 27.8°C."
                 )
             }
         return {
-            "answer": "Operating in SIH Demo Mode. You can ask about the 55°C spike, or click 'Reset Baseline' to return to live Open-Meteo weather data."
+            "answer": "Operating in SIH Demo Mode. You can ask about the 55°C spike on Pune (AWS-003), or click 'Return to Live Weather Data' to return to live Open-Meteo weather data."
         }
 
 
@@ -846,6 +923,7 @@ class InvestigationEvaluationRequest(BaseModel):
     fault_type: Optional[str] = None
     affected_feature: Optional[str] = None
     comm_failure_hours: Optional[float] = 0.0
+    ml_result: Optional[Dict[str, Any]] = None
 
 
 @app.get("/api/investigation/active")
@@ -877,6 +955,7 @@ def api_evaluate_investigation(req: InvestigationEvaluationRequest):
     packet = req.dict()
     record = investigation_service.evaluate_telemetry(
         packet,
+        ml_result=req.ml_result,
         comm_failure_hours=req.comm_failure_hours or 0.0
     )
     return {

@@ -16,22 +16,31 @@ import {
 interface SIHDemoControllerProps {
   onTriggerScenario: (scenario: string) => Promise<void>;
   onReset: () => Promise<void>;
+  currentMode?: 'LIVE' | 'DEMO';
 }
 
 export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
   onTriggerScenario,
-  onReset
+  onReset,
+  currentMode = 'LIVE',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingScenario, setLoadingScenario] = useState<string | null>(null);
   const [lastExecuted, setLastExecuted] = useState<string | null>(null);
 
+  // Clear stale active state whenever system returns to LIVE mode
+  React.useEffect(() => {
+    if (currentMode === 'LIVE') {
+      setLastExecuted(null);
+    }
+  }, [currentMode]);
+
   const scenarios = [
     {
       id: 'scenario_1_spike',
       title: '1. Catastrophic Sensor Spike (55°C)',
-      target: 'AWS-MH-042 (Pune)',
-      desc: 'Simulates sudden transducer fault. Spikes temperature to 55°C. AI identifies isolated departure, calculates 97% confidence anomaly, and computes imputed value.',
+      target: 'AWS-003 (Pune)',
+      desc: 'Simulates sudden transducer fault on Pune (AWS-003). Spikes temperature from nominal 27.8°C to 55°C. AI identifies isolated departure, validates physical limit breach, and computes IDW imputed value.',
       icon: Flame,
       color: 'bg-red-50 text-red-700 border border-red-200',
       badge: 'CRITICAL SENSOR FAULT'
@@ -39,8 +48,8 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
     {
       id: 'scenario_2_regional',
       title: '2. Regional Genuine Weather Front',
-      target: 'Western Ghats (5 Stations)',
-      desc: 'Simulates incoming convective squall. 5 stations simultaneously drop temp & surge humidity. AI verifies spatial consensus and authenticates as Genuine Weather!',
+      target: 'Pune & Mumbai Corridor (AWS-003 & AWS-004)',
+      desc: 'Simulates incoming Western Ghats convective squall across neighboring stations within ≤150km (125km separation). Pune (AWS-003) and Mumbai (AWS-004) simultaneously observe sharp temperature drop and humidity surge. AI spatial consensus validates regional coherence and authenticates as Genuine Meteorological Event!',
       icon: CloudRain,
       color: 'bg-blue-50 text-blue-700 border border-blue-200',
       badge: 'GENUINE WEATHER'
@@ -48,8 +57,8 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
     {
       id: 'scenario_freeze',
       title: '3. Frozen Sensor (Stuck ADC)',
-      target: 'AWS-MH-014 (Nashik)',
-      desc: 'Sensor reading locks with zero micro-variance across consecutive cycles. AI detects stuck transducer condition.',
+      target: 'AWS-002 (Bengaluru)',
+      desc: 'Sensor reading locks with zero micro-variance across consecutive cycles on Bengaluru (AWS-002). AI detects stuck transducer ADC condition (consecutive identical values).',
       icon: Snowflake,
       color: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
       badge: 'STUCK VALUE'
@@ -57,8 +66,8 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
     {
       id: 'scenario_drift',
       title: '4. Sensor Calibration Drift',
-      target: 'AWS-RJ-045 (Jodhpur)',
-      desc: 'Progressive creeping bias (+0.3°C/step). AI detects rate of change divergence relative to historical regional baseline.',
+      target: 'AWS-007 (Hyderabad)',
+      desc: 'Progressive creeping bias (+0.3°C/cycle) on Hyderabad (AWS-007). AI detects rate of change divergence relative to historical 30-day baseline.',
       icon: TrendingUp,
       color: 'bg-amber-50 text-amber-800 border border-amber-200',
       badge: 'CALIBRATION DRIFT'
@@ -66,8 +75,8 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
     {
       id: 'scenario_offline',
       title: '5. RTU Communication Failure',
-      target: 'AWS-AS-010 (Guwahati)',
-      desc: 'Simulates telemetry packet loss and communication timeout. Station status switches to offline.',
+      target: 'AWS-005 (Kolkata)',
+      desc: 'Simulates telemetry packet loss and communication timeout on Kolkata (AWS-005). Station status switches to OFFLINE with link down alert.',
       icon: WifiOff,
       color: 'bg-slate-100 text-slate-700 border border-slate-200',
       badge: 'COMMUNICATION'
@@ -88,11 +97,18 @@ export const SIHDemoController: React.FC<SIHDemoControllerProps> = ({
     setLoadingScenario(null);
   };
 
+  const handleOpen = () => {
+    if (currentMode === 'LIVE') {
+      setLastExecuted(null);
+    }
+    setIsOpen(true);
+  };
+
   return (
     <>
       {/* Floating Trigger Button */}
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={handleOpen}
         className="fixed bottom-6 right-6 z-[1500] flex items-center gap-2 px-4 py-3 rounded-full bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs tracking-wider border border-sky-500 shadow-lg shadow-sky-600/30 hover:scale-105 active:scale-95 transition-all"
       >
         <Zap className="w-4 h-4 fill-white" />

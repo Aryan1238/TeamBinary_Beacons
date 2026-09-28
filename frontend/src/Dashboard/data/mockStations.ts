@@ -44,7 +44,8 @@ export const MOCK_STATIONS: AWSStation[] = [
     sensors: {
       temperature: { value: 24.6, unit: '°C', status: 'NORMAL', min24h: 18.2, max24h: 28.4, expectedMin: 17.5, expectedMax: 29.0, lastUpdated: '2s ago' },
       humidity: { value: 65, unit: '%', status: 'NORMAL', min24h: 48, max24h: 84, expectedMin: 45, expectedMax: 88, lastUpdated: '2s ago' },
-      pressure: { value: 918.2, unit: 'hPa', status: 'NORMAL', min24h: 915.1, max24h: 921.4, expectedMin: 914.0, expectedMax: 923.0, lastUpdated: '2s ago' },
+      pressure: { value: 1012.4, unit: 'hPa', status: 'NORMAL', min24h: 1008.5, max24h: 1015.2, expectedMin: 1006.0, expectedMax: 1017.0, lastUpdated: '2s ago' },
+
       wind: { value: 11.8, unit: 'km/h', status: 'NORMAL', min24h: 3.5, max24h: 18.2, expectedMin: 2.0, expectedMax: 22.0, lastUpdated: '2s ago' },
       rainfall: { value: 0.0, unit: 'mm', status: 'NORMAL', min24h: 0.0, max24h: 0.5, expectedMin: 0.0, expectedMax: 10.0, lastUpdated: '2s ago' }
     },
@@ -70,7 +71,8 @@ export const MOCK_STATIONS: AWSStation[] = [
     sensors: {
       temperature: { value: 27.8, unit: '°C', status: 'NORMAL', min24h: 19.5, max24h: 29.2, expectedMin: 20.0, expectedMax: 29.5, lastUpdated: '1s ago' },
       humidity: { value: 58, unit: '%', status: 'NORMAL', min24h: 45, max24h: 88, expectedMin: 45, expectedMax: 85, lastUpdated: '1s ago' },
-      pressure: { value: 948.5, unit: 'hPa', status: 'NORMAL', min24h: 945.8, max24h: 951.2, expectedMin: 944.0, expectedMax: 953.0, lastUpdated: '1s ago' },
+      pressure: { value: 1011.6, unit: 'hPa', status: 'NORMAL', min24h: 1007.8, max24h: 1014.5, expectedMin: 1006.0, expectedMax: 1016.0, lastUpdated: '1s ago' },
+
       wind: { value: 8.6, unit: 'km/h', status: 'NORMAL', min24h: 2.0, max24h: 15.0, expectedMin: 1.0, expectedMax: 20.0, lastUpdated: '1s ago' },
       rainfall: { value: 0.0, unit: 'mm', status: 'NORMAL', min24h: 0.0, max24h: 0.0, expectedMin: 0.0, expectedMax: 5.0, lastUpdated: '1s ago' }
     },
@@ -174,7 +176,8 @@ export const MOCK_STATIONS: AWSStation[] = [
     sensors: {
       temperature: { value: 29.8, unit: '°C', status: 'NORMAL', min24h: 22.0, max24h: 32.5, expectedMin: 21.0, expectedMax: 33.0, lastUpdated: '1s ago' },
       humidity: { value: 59, unit: '%', status: 'NORMAL', min24h: 42, max24h: 76, expectedMin: 40, expectedMax: 80, lastUpdated: '1s ago' },
-      pressure: { value: 968.2, unit: 'hPa', status: 'WARNING', min24h: 954.0, max24h: 971.0, expectedMin: 952.0, expectedMax: 960.0, lastUpdated: '5s ago' },
+      pressure: { value: 1010.8, unit: 'hPa', status: 'WARNING', min24h: 1007.0, max24h: 1024.0, expectedMin: 1005.0, expectedMax: 1015.0, lastUpdated: '5s ago' },
+
       wind: { value: 11.2, unit: 'km/h', status: 'NORMAL', min24h: 3.5, max24h: 17.0, expectedMin: 2.0, expectedMax: 22.0, lastUpdated: '1s ago' },
       rainfall: { value: 0.0, unit: 'mm', status: 'NORMAL', min24h: 0.0, max24h: 1.5, expectedMin: 0.0, expectedMax: 10.0, lastUpdated: '1s ago' }
     },
@@ -216,14 +219,14 @@ export const MOCK_ANOMALIES: AnomalyAlert[] = [
     title: 'Unexpected Pressure Deviation (+12 hPa)',
     description: 'Barometric transducer step change inconsistent with synoptic-scale pressure field.',
     severity: 'MEDIUM',
-    observedValue: '968.2 hPa',
-    expectedRange: '954.0 – 958.0 hPa',
+    observedValue: '1022.8 hPa',
+    expectedRange: '1008.0 – 1014.0 hPa',
     deviationPercent: 1.4,
     detectedAt: '34 mins ago',
     status: 'Open',
     evidence: {
       historical: 'Exceeds standard 3-hour barometric pressure tendency threshold (max allowed ±3.0 hPa/3h).',
-      crossStation: 'Deccan plateau stations show uniform 954 hPa isobars without frontal passage.',
+      crossStation: 'Deccan plateau stations show uniform 1010 hPa isobars without frontal passage.',
       physicalConsistency: 'Wind velocity did not register squall gradient expected for a 12 hPa pressure step.',
       recommendedAction: 'Verify piezo-resistive pressure port for dust blockage or moisture condensation.'
     }
@@ -338,12 +341,12 @@ const PUNE_SPIKE_CURVE: HistoryPoint[] = DEFAULT_CURVE.map((pt) => {
 // Record keyed by station ID
 export const MOCK_24H_HISTORY: Record<string, HistoryPoint[]> = {
   'AWS-001': DEFAULT_CURVE.map(p => ({ ...p, temperature: p.temperature + 1.2, humidity: p.humidity + 5 })),
-  'AWS-002': DEFAULT_CURVE.map(p => ({ ...p, temperature: p.temperature - 5.0, pressure: p.pressure - 90 })),
+  'AWS-002': DEFAULT_CURVE.map(p => ({ ...p, temperature: p.temperature - 5.0, pressure: p.pressure + 4.6 })),
   'AWS-003': PUNE_SPIKE_CURVE,
   'AWS-004': DEFAULT_CURVE.map(p => ({ ...p, temperature: p.temperature + 1.8, humidity: p.humidity + 7 })),
   'AWS-005': DEFAULT_CURVE.map(p => ({ ...p, humidity: p.humidity + 10, rainfall: p.rainfall + 2 })),
   'AWS-006': DEFAULT_CURVE.map(p => ({ ...p, temperature: p.temperature + 4.5, humidity: p.humidity - 18 })),
-  'AWS-007': DEFAULT_CURVE.map(p => ({ ...p, pressure: p.pressure - 40 })),
+  'AWS-007': DEFAULT_CURVE.map(p => ({ ...p, pressure: p.pressure + 3.0 })),
 };
 
 // Helper calculations

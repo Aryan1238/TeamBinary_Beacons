@@ -47,6 +47,24 @@ EXCLUDED_STATION_IDS = {
     "43063", "43057", "43295",
 }
 
+STATION_ELEVATIONS: Dict[str, float] = {
+    "AWS-001": 16.0,
+    "AWS-002": 888.0,
+    "AWS-003": 592.0,
+    "AWS-004": 14.0,
+    "AWS-005": 6.0,
+    "AWS-006": 55.0,
+    "AWS-007": 531.0,
+    "43279": 16.0,
+    "43295": 888.0,
+    "43063": 592.0,
+    "43057": 14.0,
+    "42809": 6.0,
+    "42647": 55.0,
+    "43128": 531.0,
+}
+
+
 
 class LSTMInferenceService:
     def __init__(self, repo_root: Optional[str] = None):
@@ -244,17 +262,58 @@ class LSTMInferenceService:
         hum = float(hum)
         press = float(press)
         wind = float(wind)
-        wind_dir = float(wind_dir)
+        try:
+            wind_dir = float(wind_dir) if wind_dir is not None and not math.isnan(float(wind_dir)) else 180.0
+        except (ValueError, TypeError):
+            wind_dir = 180.0
+
+        # Barometric reduction to Mean Sea Level Pressure (MSLP) for elevated Indian AWS stations.
+        # The LSTM Autoencoder was trained on MSLP from weather_merged.csv (mean 1009.38 hPa, scale 4.93 hPa).
+        # Stations like Bengaluru (888m) and Pune (592m) reporting local surface pressure (< 980 hPa)
+        # are reduced to MSLP for model feature parity without altering raw physical UI values.
+        if press < 980.0:
+            elev = STATION_ELEVATIONS.get(str(station_id), 0.0)
+            if elev > 30.0:
+                press = press * math.exp(0.034163 * elev / (temp + 273.15))
+
 
         # 4. Check hourly continuity (dt spacing <= 1.05h)
+        key = (str(station_id), source.upper())
         if key not in self.buffers:
             self.buffers[key] = []
 
         buf = self.buffers[key]
         if len(buf) > 0:
-            prev_dt = buf[-1]["dt"]
-            diff_hours = (dt - prev_dt).total_seconds() / 3600.0
-            if diff_hours > 1.05 or diff_hours < 0.0:
+            prev_reading = buf[-1]
+            prev_dt = prev_reading["dt"]
+            diff_secs = (dt - prev_dt).total_seconds()
+            diff_hours = diff_secs / 3600.0
+
+            # If incoming packet uses generic default placeholder 180.0 (e.g. from frontend without wind vane),
+            # preserve continuity from the buffered series to avoid artificial cyclical step transients
+            if abs(wind_dir - 180.0) < 0.001 and prev_reading.get("wind_direction") is not None:
+                wind_dir = prev_reading["wind_direction"]
+
+
+            # Deduplication: if same packet arrived within 1.5 seconds with matching values, return current status without appending
+            if abs(diff_secs) < 1.5 and abs(temp - prev_reading["temperature"]) < 0.001 and abs(hum - prev_reading["humidity"]) < 0.001:
+                n_available = len(buf)
+                if n_available < 24:
+                    return {
+                        "status": f"WARMING_UP ({n_available}/24)",
+                        "reconstruction_error": None,
+                        "threshold": round(self.threshold, 5),
+                        "error_ratio": None,
+                        "warmup_step": n_available,
+                        "dominant_feature": "Warming up",
+                        "prediction": "WARMING_UP",
+                        "message": f"Buffering hourly packets: {n_available}/24.",
+                    }
+                # If buffer already >= 24, re-use existing buffer without re-appending duplicate
+                return self._evaluate_window(buf, iso_ts, station_id, source, fault_type, affected_feature)
+
+            # Check time gap: allow sub-second concurrency jitter down to -0.01h (-36s)
+            if diff_hours > 1.05 or diff_hours < -0.01:
                 buf.clear()
                 self.log_transition(station_id, source, "RESET", f"Time gap ({diff_hours:.2f}h > 1.0h)")
 
@@ -289,7 +348,18 @@ class LSTMInferenceService:
             }
 
         # 6. We have at least 24 consecutive valid hourly readings!
-        # Construct the (24, 25) feature window for the last 24 steps
+        return self._evaluate_window(buf, iso_ts, station_id, source, fault_type, affected_feature)
+
+    def _evaluate_window(
+        self,
+        buf: List[Dict[str, Any]],
+        iso_ts: str,
+        station_id: Any,
+        source: str,
+        fault_type: Optional[str] = None,
+        affected_feature: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Runs the frozen LSTM Autoencoder over the latest 24 readings in buf."""
         target_readings = buf[-24:]
         window_features = []
 
@@ -310,7 +380,6 @@ class LSTMInferenceService:
             day_of_yr = float(c_dt.timetuple().tm_yday)
 
             # Rates of change (from previous reading in buf)
-            # Find item's index in buf
             buf_idx = len(buf) - 24 + idx
             if buf_idx > 0:
                 p_item = buf[buf_idx - 1]
