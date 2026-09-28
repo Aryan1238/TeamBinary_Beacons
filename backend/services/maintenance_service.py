@@ -1,7 +1,7 @@
 """
 SkyGuard AI — Maintenance & Response Service
 Manages automated and operator-initiated maintenance work orders for Automatic Weather Stations.
-Persists records thread-safely in backend/data/tickets.json.
+Session-isolated runtime store: each client session maintains its own work orders.
 Enforces Step 7 Verification Rule: Tickets marked RESOLVED place the sensor into
 AWAITING VERIFICATION until an explicit verification re-evaluates real telemetry.
 """
@@ -24,31 +24,64 @@ class MaintenanceService:
         if not os.path.exists(TICKETS_FILE):
             self._save_tickets([])
 
-    def _load_tickets(self) -> List[Dict[str, Any]]:
+        # Session-isolated tickets: session_id -> list of ticket dicts
+        self.session_tickets: Dict[str, List[Dict[str, Any]]] = {}
+        self.session_last_activity: Dict[str, float] = {}
+
+    def _cleanup_expired_sessions(self, now: float):
+        # 30-minute idle TTL cleanup
+        expired = [s for s, last_t in self.session_last_activity.items() if now - last_t > 1800 and s != "default"]
+        for s in expired:
+            self.session_tickets.pop(s, None)
+            self.session_last_activity.pop(s, None)
+
+        # Cap sessions at 50 to prevent unbounded memory growth on Render free tier
+        if len(self.session_last_activity) > 50:
+            oldest = sorted(
+                [s for s in self.session_last_activity if s != "default"],
+                key=lambda s: self.session_last_activity[s]
+            )
+            for s in oldest[: len(self.session_last_activity) - 50]:
+                self.session_tickets.pop(s, None)
+                self.session_last_activity.pop(s, None)
+
+    def _get_session_tickets(self, session_id: Optional[str] = "default") -> List[Dict[str, Any]]:
+        sid = (session_id or "default").strip()
+        now = time.time()
         with self._lock:
-            if not os.path.exists(TICKETS_FILE):
-                return []
-            try:
-                with open(TICKETS_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                return []
+            self._cleanup_expired_sessions(now)
+            if sid not in self.session_tickets:
+                if sid == "default":
+                    self.session_tickets[sid] = self._load_tickets()
+                else:
+                    self.session_tickets[sid] = []
+            self.session_last_activity[sid] = now
+            return self.session_tickets[sid]
+
+    def _load_tickets(self) -> List[Dict[str, Any]]:
+        if not os.path.exists(TICKETS_FILE):
+            return []
+        try:
+            with open(TICKETS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
 
     def _save_tickets(self, tickets: List[Dict[str, Any]]):
-        with self._lock:
-            temp_path = TICKETS_FILE + ".tmp"
-            with open(temp_path, "w", encoding="utf-8") as f:
-                json.dump(tickets, f, indent=2, ensure_ascii=False)
-            os.replace(temp_path, TICKETS_FILE)
+        temp_path = TICKETS_FILE + ".tmp"
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(tickets, f, indent=2, ensure_ascii=False)
+        os.replace(temp_path, TICKETS_FILE)
 
     def list_tickets(
         self,
         status: Optional[str] = None,
         station_id: Optional[str] = None,
         sensor: Optional[str] = None,
-        priority: Optional[str] = None
+        priority: Optional[str] = None,
+        session_id: Optional[str] = "default"
     ) -> List[Dict[str, Any]]:
-        tickets = self._load_tickets()
+        tickets = self._get_session_tickets(session_id)
         filtered = tickets
         if status and status.upper() != "ALL":
             filtered = [t for t in filtered if t.get("status", "").upper() == status.upper()]
@@ -62,27 +95,28 @@ class MaintenanceService:
         filtered.sort(key=lambda t: t.get("updated_at") or t.get("created_at") or "", reverse=True)
         return filtered
 
-    def get_ticket(self, ticket_id: str) -> Optional[Dict[str, Any]]:
-        tickets = self._load_tickets()
+    def get_ticket(self, ticket_id: str, session_id: Optional[str] = "default") -> Optional[Dict[str, Any]]:
+        tickets = self._get_session_tickets(session_id)
         for t in tickets:
             if t.get("id") == ticket_id or t.get("ticket_id") == ticket_id:
                 return t
         return None
 
-    def get_tickets_for_sensor(self, station_id: str, sensor: str) -> List[Dict[str, Any]]:
-        tickets = self._load_tickets()
+    def get_tickets_for_sensor(self, station_id: str, sensor: str, session_id: Optional[str] = "default") -> List[Dict[str, Any]]:
+        tickets = self._get_session_tickets(session_id)
         return [
             t for t in tickets
             if t.get("station_id", "").upper() == station_id.upper()
             and t.get("sensor", "").lower() == sensor.lower()
         ]
 
-    def create_ticket(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_ticket(self, payload: Dict[str, Any], session_id: Optional[str] = "default") -> Dict[str, Any]:
         """
-        Creates a new maintenance ticket.
+        Creates a new maintenance ticket in the caller's session.
         Auto-populates priority from linked investigation or defaults to HIGH if critical issue.
         """
-        tickets = self._load_tickets()
+        sid = (session_id or "default").strip()
+        tickets = self._get_session_tickets(sid)
         now_iso = datetime.now().isoformat()
         
         station_id = payload.get("station_id", "AWS-001")
@@ -124,8 +158,8 @@ class MaintenanceService:
             "notes": payload.get("notes") or [
                 {
                     "timestamp": now_iso,
-                    "author": "System Dispatch Engine",
-                    "text": f"Work order generated automatically for {station_id} ({sensor})."
+                    "author": "Operator Work Order",
+                    "text": f"Work order logged for {station_id} ({sensor})."
                 }
             ],
             "resolution": None,
@@ -142,15 +176,17 @@ class MaintenanceService:
         }
 
         tickets.append(ticket)
-        self._save_tickets(tickets)
+        if sid == "default":
+            self._save_tickets(tickets)
         return ticket
 
-    def update_ticket(self, ticket_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update_ticket(self, ticket_id: str, updates: Dict[str, Any], session_id: Optional[str] = "default") -> Optional[Dict[str, Any]]:
         """
         Updates ticket status, assignee, notes, or resolution.
         If moving to RESOLVED, the status is set to AWAITING VERIFICATION per the Verification Rule!
         """
-        tickets = self._load_tickets()
+        sid = (session_id or "default").strip()
+        tickets = self._get_session_tickets(sid)
         found = False
         target_ticket = None
         now_iso = datetime.now().isoformat()
@@ -200,14 +236,16 @@ class MaintenanceService:
             target_ticket["resolution"] = updates["resolution"]
 
         target_ticket["updated_at"] = now_iso
-        self._save_tickets(tickets)
+        if sid == "default":
+            self._save_tickets(tickets)
         return target_ticket
 
     def verify_ticket(
         self,
         ticket_id: str,
         active_investigations: List[Dict[str, Any]],
-        current_sensor_status: str
+        current_sensor_status: str,
+        session_id: Optional[str] = "default"
     ) -> Dict[str, Any]:
         """
         Step 7 & 10 Verification Rule:
@@ -217,7 +255,8 @@ class MaintenanceService:
         - If sensor is still actively faulted:
           Verification FAILS, ticket remains AWAITING VERIFICATION, detail explains failure.
         """
-        tickets = self._load_tickets()
+        sid = (session_id or "default").strip()
+        tickets = self._get_session_tickets(sid)
         target_ticket = None
         now_iso = datetime.now().isoformat()
 
@@ -255,7 +294,8 @@ class MaintenanceService:
                 "detail": f"Live telemetry validation confirmed nominal operational parameters. Ticket closed successfully."
             })
             target_ticket["updated_at"] = now_iso
-            self._save_tickets(tickets)
+            if sid == "default":
+                self._save_tickets(tickets)
             return {
                 "success": True,
                 "status": "CLOSED",
@@ -276,7 +316,8 @@ class MaintenanceService:
                 "detail": f"Verification failed: {reason}."
             })
             target_ticket["updated_at"] = now_iso
-            self._save_tickets(tickets)
+            if sid == "default":
+                self._save_tickets(tickets)
             return {
                 "success": False,
                 "status": target_ticket.get("status"),
@@ -284,8 +325,8 @@ class MaintenanceService:
                 "ticket": target_ticket
             }
 
-    def get_kpis(self, include_simulation: bool = False) -> Dict[str, Any]:
-        all_tickets = self._load_tickets()
+    def get_kpis(self, include_simulation: bool = False, session_id: Optional[str] = "default") -> Dict[str, Any]:
+        all_tickets = self._get_session_tickets(session_id)
         tickets = [t for t in all_tickets if include_simulation or not t.get("is_simulation", False)]
         total = len(tickets)
         simulation_count = sum(1 for t in all_tickets if t.get("is_simulation", False))
@@ -319,7 +360,11 @@ class MaintenanceService:
             "simulation_tickets": simulation_count
         }
 
-    def clear_all(self):
-        self._save_tickets([])
+    def clear_all(self, session_id: Optional[str] = "default"):
+        sid = (session_id or "default").strip()
+        tickets = self._get_session_tickets(sid)
+        tickets.clear()
+        if sid == "default":
+            self._save_tickets([])
 
 maintenance_service = MaintenanceService()

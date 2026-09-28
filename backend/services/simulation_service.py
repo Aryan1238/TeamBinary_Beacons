@@ -139,7 +139,7 @@ class SimulationService:
                 self._historical_df = pd.DataFrame()
         return self._historical_df
 
-    def warmup_station_buffer(self, station_id: str, source: str = "Meteostat") -> Dict[str, Any]:
+    def warmup_station_buffer(self, station_id: str, source: str = "Meteostat", session_id: Optional[str] = "default") -> Dict[str, Any]:
         """
         Step 1: Live Buffer Warm-Up.
         Pre-seeds station's live LSTM buffer with its last 24 real consecutive hourly readings.
@@ -241,22 +241,25 @@ class SimulationService:
             hist_readings.append((reading_dt, t_val))
 
 
-        # Pre-seed buffer in lstm_service (populating both upper and raw case)
-        lstm_service.buffers[(str(station_id), source)] = readings.copy()
-        lstm_service.buffers[(str(station_id), source.upper())] = readings.copy()
+        # Pre-seed buffer in lstm_service for this session (populating both upper and raw case)
+        sid = (session_id or "default").strip()
+        lstm_bufs = lstm_service._get_session_buffers(sid)
+        lstm_bufs[(str(station_id), source)] = readings.copy()
+        lstm_bufs[(str(station_id), source.upper())] = readings.copy()
         # Also alias numeric id if mapped
         if st_config and st_config.get("meteostat_id"):
-            lstm_service.buffers[(str(st_config["meteostat_id"]), source)] = readings.copy()
-            lstm_service.buffers[(str(st_config["meteostat_id"]), source.upper())] = readings.copy()
+            lstm_bufs[(str(st_config["meteostat_id"]), source)] = readings.copy()
+            lstm_bufs[(str(st_config["meteostat_id"]), source.upper())] = readings.copy()
 
-        # Pre-seed investigation_service history (both station_id and numeric id)
-        investigation_service.station_readings_history[str(station_id)] = hist_readings.copy()
+        # Pre-seed investigation_service history for this session (both station_id and numeric id)
+        _, latest_readings, readings_hist = investigation_service._get_session_data(sid)
+        readings_hist[str(station_id)] = hist_readings.copy()
         if st_config and st_config.get("meteostat_id"):
-            investigation_service.station_readings_history[str(st_config["meteostat_id"])] = hist_readings.copy()
+            readings_hist[str(st_config["meteostat_id"])] = hist_readings.copy()
 
-        # Pre-seed latest station reading cache for cold-start spatial consensus
+        # Pre-seed latest station reading cache for cold-start spatial consensus in this session
         if st_config:
-            investigation_service.latest_station_readings[str(station_id)] = {
+            latest_readings[str(station_id)] = {
                 "station_id": str(station_id),
                 "name": st_config["name"],
                 "lat": st_config["lat"],
@@ -289,7 +292,8 @@ class SimulationService:
         magnitude: Optional[float] = None,
         duration: int = 12,
         noise_level: str = "MEDIUM",
-        auto_warmup: bool = True
+        auto_warmup: bool = True,
+        session_id: Optional[str] = "default"
     ) -> Dict[str, Any]:
         """
         Steps 2–7: Executes full simulation test across all real services.
@@ -314,9 +318,9 @@ class SimulationService:
         # Pre-seed buffer if auto_warmup requested and not 3h
         warmup_res = None
         if auto_warmup and not is_3h:
-            warmup_res = self.warmup_station_buffer(station_id, source)
+            warmup_res = self.warmup_station_buffer(station_id, source, session_id=session_id)
             key = (str(station_id), source)
-            buf = lstm_service.buffers.get(key, [])
+            buf = lstm_service.get_session_buffers(session_id).get(key, [])
             if buf:
                 last_b = buf[-1]
                 base_vals = {
@@ -404,25 +408,26 @@ class SimulationService:
             frozen_hist = []
             for k in range(5, 0, -1):
                 frozen_hist.append((now - timedelta(hours=k), ref_val))
-            investigation_service.station_readings_history[station_id] = frozen_hist
+            investigation_service._get_session_data(session_id)["history"][station_id] = frozen_hist
 
         # Run ML Inference if applicable
         infer_res = None
         if not is_3h and not is_comm and scenario != "normal":
-            infer_res = lstm_service.process_packet(packet, fault_type=packet["fault_type"], affected_feature=sensor)
+            infer_res = lstm_service.process_packet(packet, fault_type=packet["fault_type"], affected_feature=sensor, session_id=session_id)
             lstm_error = infer_res.get("reconstruction_error")
             if infer_res.get("status") == "ANOMALY":
                 lstm_detected = True
 
         # Run Investigation Evaluation (Multi-layer rules + Spatial + External)
         if scenario == "normal":
-            investigation_service.clear_investigation(station_id)
+            investigation_service.clear_investigation(station_id, session_id=session_id)
             inv_record = None
         else:
             inv_record = investigation_service.evaluate_telemetry(
                 packet,
                 ml_result=infer_res,
-                comm_failure_hours=mag if is_comm else 0.0
+                comm_failure_hours=mag if is_comm else 0.0,
+                session_id=session_id
             )
 
         if inv_record:
@@ -488,7 +493,7 @@ class SimulationService:
             }
 
         # 4. Sensor Health Matrix Update
-        sh_detail = sensor_health_service.evaluate_sensor(station_id, sensor, current_val=sim_val if not is_comm else None)
+        sh_detail = sensor_health_service.evaluate_sensor(station_id, sensor, current_val=sim_val if not is_comm else None, session_id=session_id)
         sensor_health_status = sh_detail["status"]
         steps["sensor_health_updated"] = {
             "complete": True,
@@ -520,14 +525,14 @@ class SimulationService:
                 },
                 "recommended_action": inv_record.get("recommended_action", "Probe recalibration") if inv_record else "Probe inspection"
             }
-            created_ticket = maintenance_service.create_ticket(t_payload)
+            sim_ticket_id = f"SIM-MNT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
             steps["maintenance_ticket_created"] = {
                 "complete": True,
                 "timestamp": datetime.now().isoformat(),
-                "ticket_id": created_ticket["id"],
-                "priority": created_ticket["priority"],
-                "status": created_ticket["status"],
-                "detail": f"Simulation ticket {created_ticket['id']} logged (isolated from production KPIs)."
+                "ticket_id": sim_ticket_id,
+                "priority": severity if severity in ("CRITICAL", "HIGH", "MEDIUM", "LOW") else "HIGH",
+                "status": "DISPATCH_CANDIDATE",
+                "detail": f"Simulation dispatch candidate {sim_ticket_id} evaluated (requires explicit operator confirmation)."
             }
         else:
             steps["maintenance_ticket_created"] = {

@@ -200,7 +200,8 @@ class SensorHealthService:
         self,
         station_id: str,
         sensor: str,
-        current_val: Optional[float] = None
+        current_val: Optional[float] = None,
+        session_id: Optional[str] = "default"
     ) -> Dict[str, Any]:
         """
         Step 1: Health calculation for a single station + sensor.
@@ -223,13 +224,13 @@ class SensorHealthService:
         if current_val is None:
             current_val = DEFAULT_TELEMETRY.get(station_id, {}).get(sensor, 25.0)
 
-        # 1. Check Maintenance Tickets for this station+sensor
-        active_tickets = maintenance_service.get_tickets_for_sensor(station_id, sensor)
+        # 1. Check Maintenance Tickets for this station+sensor in this session
+        active_tickets = maintenance_service.get_tickets_for_sensor(station_id, sensor, session_id=session_id)
         awaiting_verif_ticket = next((t for t in active_tickets if t.get("status") in ("AWAITING VERIFICATION", "RESOLVED")), None)
         open_ticket = next((t for t in active_tickets if t.get("status") not in ("RESOLVED", "CLOSED")), None)
 
-        # 2. Check Active Investigation Record
-        inv = investigation_service.get_station_investigation(station_id)
+        # 2. Check Active Investigation Record in this session
+        inv = investigation_service.get_station_investigation(station_id, session_id=session_id)
         is_matching_inv = False
         inv_severity = None
         inv_detail = None
@@ -416,9 +417,9 @@ class SensorHealthService:
             "timeline": timeline
         }
 
-    def get_station_health_matrix(self) -> Dict[str, Any]:
+    def get_station_health_matrix(self, session_id: Optional[str] = "default") -> Dict[str, Any]:
         """
-        Step 2: Builds full Station x Sensor Matrix + Station Overall Health.
+        Step 2: Builds full Station x Sensor Matrix + Station Overall Health for this session.
         Overall Health Rule: Worst-case rule across the 5 sensors.
         """
         matrix_rows = []
@@ -440,9 +441,10 @@ class SensorHealthService:
             "HEALTHY": 1
         }
 
-        # Check latest station telemetry
+        # Check latest station telemetry for this session
         telemetry_dict = dict(DEFAULT_TELEMETRY)
-        for sid, reading in investigation_service.latest_station_readings.items():
+        _, session_latest, _ = investigation_service._get_session_data(session_id)
+        for sid, reading in session_latest.items():
             if sid in telemetry_dict and "temperature" in reading:
                 telemetry_dict[sid]["temperature"] = reading["temperature"]
 
@@ -458,7 +460,7 @@ class SensorHealthService:
             for s_var in SENSOR_VARS:
                 total_probes += 1
                 curr_val = st_telemetry.get(s_var)
-                eval_res = self.evaluate_sensor(sid, s_var, curr_val)
+                eval_res = self.evaluate_sensor(sid, s_var, curr_val, session_id=session_id)
                 sensor_results[s_var] = eval_res
                 s_stat = eval_res["status"]
                 overall_counts[s_stat] = overall_counts.get(s_stat, 0) + 1
@@ -485,8 +487,8 @@ class SensorHealthService:
                 "sensors": sensor_results
             })
 
-        # Summary KPIs
-        ticket_kpis = maintenance_service.get_kpis()
+        # Summary KPIs for this session
+        ticket_kpis = maintenance_service.get_kpis(session_id=session_id)
 
         summary_kpis = {
             "total_stations": len(STATION_CONFIGS),
@@ -507,16 +509,17 @@ class SensorHealthService:
             "matrix": matrix_rows
         }
 
-    def get_single_sensor_detail(self, station_id: str, sensor: str) -> Dict[str, Any]:
+    def get_single_sensor_detail(self, station_id: str, sensor: str, session_id: Optional[str] = "default") -> Dict[str, Any]:
         """
         Step 3 & 4: Detail view for a single station+sensor including
         investigation root cause, drift metrics, ML status, active tickets, and timeline.
         """
         curr_val = DEFAULT_TELEMETRY.get(station_id, {}).get(sensor)
-        # Check latest live cache
-        if sensor == "temperature" and station_id in investigation_service.latest_station_readings:
-            curr_val = investigation_service.latest_station_readings[station_id].get("temperature", curr_val)
-        return self.evaluate_sensor(station_id, sensor, curr_val)
+        # Check latest live cache for this session
+        _, session_latest, _ = investigation_service._get_session_data(session_id)
+        if sensor == "temperature" and station_id in session_latest:
+            curr_val = session_latest[station_id].get("temperature", curr_val)
+        return self.evaluate_sensor(station_id, sensor, curr_val, session_id=session_id)
 
 
 # Singleton sensor health service

@@ -4,9 +4,18 @@ import json
 import time
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, BackgroundTasks, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+def resolve_session_id(request: Request, session_id: Optional[str] = None) -> str:
+    """Resolves session ID from body/query, X-Session-ID header, or falls back to 'default'."""
+    if session_id and session_id.strip():
+        return session_id.strip()
+    hdr = request.headers.get("x-session-id")
+    if hdr and hdr.strip():
+        return hdr.strip()
+    return "default"
 
 try:
     from .models import (
@@ -656,16 +665,19 @@ def accept_correction(req: AcceptCorrectionRequest):
     return {"success": True, "anomaly_id": req.anomaly_id}
 
 @app.post("/api/simulation/reset")
-def reset_simulation():
+def reset_simulation(request: Request, session_id: Optional[str] = None):
     """Resets simulation and returns system to LIVE OPEN-METEO mode."""
     global current_mode
     current_mode = "live"
+    sid = resolve_session_id(request, session_id)
     sim.reset()
-    investigation_service.clear_all()
+    investigation_service.clear_all(session_id=sid)
+    lstm_service.reset_session_buffers(sid, "Simulation Reset")
     live_weather_service.fetch_live_weather(force=True)
     return {
         "success": True,
         "mode": "live",
+        "session_id": sid,
         "message": "System returned to LIVE Open-Meteo mode. Telemetry reset to real weather values."
     }
 
@@ -812,18 +824,21 @@ class MLInferPacket(BaseModel):
     wind_direction: Optional[float] = 0.0
     fault_type: Optional[str] = None
     affected_feature: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 @app.post("/api/ml/infer")
-def ml_infer_packet(packet: MLInferPacket):
+def ml_infer_packet(packet: MLInferPacket, request: Request):
     """
     Submits a telemetry packet to the LSTM Autoencoder rolling buffer.
     Returns status: NORMAL, ANOMALY, WARMING_UP (n/24), or NOT_APPLICABLE (3h cadence).
     """
+    sid = resolve_session_id(request, packet.session_id)
     result = lstm_service.process_packet(
         packet.dict(),
         fault_type=packet.fault_type,
-        affected_feature=packet.affected_feature
+        affected_feature=packet.affected_feature,
+        session_id=sid
     )
     return result
 
@@ -842,13 +857,16 @@ def ml_get_threshold():
 
 
 @app.get("/api/ml/status")
-def ml_get_status(station_id: Optional[str] = None, source: str = "Meteostat"):
-    """Returns buffer and inference status for a station or all buffers."""
+def ml_get_status(request: Request, station_id: Optional[str] = None, source: str = "Meteostat", session_id: Optional[str] = None):
+    """Returns buffer and inference status for a station or all buffers for the current session."""
+    sid = resolve_session_id(request, session_id)
+    buffers = lstm_service.get_session_buffers(sid)
     if station_id:
         key = (str(station_id), source)
-        buf = lstm_service.buffers.get(key, [])
-        is_excluded = key in lstm_service.excluded_series or str(station_id) in lstm_service.excluded_stations
+        buf = buffers.get(key, [])
+        is_excluded = lstm_service.is_series_excluded(station_id, source)
         return {
+            "session_id": sid,
             "station_id": station_id,
             "source": source,
             "is_excluded": is_excluded,
@@ -858,29 +876,30 @@ def ml_get_status(station_id: Optional[str] = None, source: str = "Meteostat"):
         }
     else:
         status_map = {}
-        for (sid, src), buf in lstm_service.buffers.items():
-            status_map[f"{sid}_{src}"] = {
-                "station_id": sid,
+        for (st_id, src), buf in buffers.items():
+            status_map[f"{st_id}_{src}"] = {
+                "station_id": st_id,
                 "source": src,
                 "buffer_length": len(buf),
                 "status": "NORMAL" if len(buf) >= 24 else f"WARMING_UP ({len(buf)}/24)"
             }
         return {
-            "active_buffers": len(lstm_service.buffers),
+            "session_id": sid,
+            "active_buffers": len(buffers),
             "buffers": status_map,
             "threshold": round(lstm_service.threshold, 5)
         }
 
 
 @app.post("/api/ml/reset")
-def ml_reset_buffers(station_id: Optional[str] = None, source: str = "Meteostat"):
-    """Resets the rolling buffer for a station or all stations."""
+def ml_reset_buffers(request: Request, station_id: Optional[str] = None, source: str = "Meteostat", session_id: Optional[str] = None):
+    """Resets the rolling buffer for a station or all stations for this session."""
+    sid = resolve_session_id(request, session_id)
     if station_id:
-        lstm_service.reset_buffer(station_id, source, "API Reset Request")
+        lstm_service.reset_buffer(station_id, source, "API Reset Request", session_id=sid)
     else:
-        for (sid, src) in list(lstm_service.buffers.keys()):
-            lstm_service.reset_buffer(sid, src, "Global Reset Request")
-    return {"success": True, "message": "ML buffers reset successfully"}
+        lstm_service.reset_session_buffers(sid, "Global Reset Request")
+    return {"success": True, "message": f"ML buffers reset successfully for session {sid}"}
 
 
 @app.get("/api/ml/logs")
@@ -924,53 +943,62 @@ class InvestigationEvaluationRequest(BaseModel):
     affected_feature: Optional[str] = None
     comm_failure_hours: Optional[float] = 0.0
     ml_result: Optional[Dict[str, Any]] = None
+    session_id: Optional[str] = None
 
 
 @app.get("/api/investigation/active")
-def api_get_active_investigations():
-    """Returns all currently active investigation records across the network."""
-    investigations = investigation_service.get_active_investigations()
+def api_get_active_investigations(request: Request, session_id: Optional[str] = None):
+    """Returns all currently active investigation records across the network for this session."""
+    sid = resolve_session_id(request, session_id)
+    investigations = investigation_service.get_active_investigations(session_id=sid)
     return {
+        "session_id": sid,
         "total": len(investigations),
         "investigations": investigations
     }
 
 
 @app.get("/api/investigation/{station_id}")
-def api_get_station_investigation(station_id: str):
+def api_get_station_investigation(station_id: str, request: Request, session_id: Optional[str] = None):
     """Returns the active investigation record for a specific station, or null."""
-    record = investigation_service.get_station_investigation(station_id)
+    sid = resolve_session_id(request, session_id)
+    record = investigation_service.get_station_investigation(station_id, session_id=sid)
     return {
+        "session_id": sid,
         "station_id": station_id,
         "investigation": record
     }
 
 
 @app.post("/api/investigation/evaluate")
-def api_evaluate_investigation(req: InvestigationEvaluationRequest):
+def api_evaluate_investigation(req: InvestigationEvaluationRequest, request: Request):
     """
     Evaluates an incoming telemetry packet across ML sequence error, deterministic rule checks,
     external weather, and spatial consensus. Returns an InvestigationRecord if triggered.
     """
+    sid = resolve_session_id(request, req.session_id)
     packet = req.dict()
     record = investigation_service.evaluate_telemetry(
         packet,
         ml_result=req.ml_result,
-        comm_failure_hours=req.comm_failure_hours or 0.0
+        comm_failure_hours=req.comm_failure_hours or 0.0,
+        session_id=sid
     )
     return {
+        "session_id": sid,
         "has_investigation": record is not None,
         "investigation": record
     }
 
 
 @app.post("/api/investigation/clear")
-def api_clear_investigation(station_id: Optional[str] = None):
-    """Clears active investigations for a station or all stations."""
+def api_clear_investigation(request: Request, station_id: Optional[str] = None, session_id: Optional[str] = None):
+    """Clears active investigations for a station or all stations for this session."""
+    sid = resolve_session_id(request, session_id)
     if station_id:
-        investigation_service.clear_investigation(station_id)
+        investigation_service.clear_investigation(station_id, session_id=sid)
     else:
-        investigation_service.clear_all()
+        investigation_service.clear_all(session_id=sid)
     return {"success": True, "message": "Investigations cleared successfully"}
 
 
@@ -1118,6 +1146,7 @@ class TicketCreateRequest(BaseModel):
     evidence: Optional[Dict[str, Any]] = None
     recommended_action: Optional[str] = None
     notes: Optional[List[Dict[str, Any]]] = None
+    session_id: Optional[str] = None
 
 
 class TicketUpdateRequest(BaseModel):
@@ -1127,89 +1156,100 @@ class TicketUpdateRequest(BaseModel):
     note: Optional[str] = None
     author: Optional[str] = "Operator"
     resolution: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 @app.get("/api/sensor-health/matrix")
-def api_get_sensor_health_matrix():
+def api_get_sensor_health_matrix(request: Request, session_id: Optional[str] = None):
     """
     Returns full Station x Sensor Health Matrix (7 stations x 5 sensors),
-    along with Station Overall Health and live summary KPIs.
+    along with Station Overall Health and live summary KPIs for this session.
     """
-    return sensor_health_service.get_station_health_matrix()
+    sid = resolve_session_id(request, session_id)
+    return sensor_health_service.get_station_health_matrix(session_id=sid)
 
 
 @app.get("/api/sensor-health/sensor")
-def api_get_single_sensor_health(station_id: str = "AWS-003", sensor: str = "temperature"):
+def api_get_single_sensor_health(request: Request, station_id: str = "AWS-003", sensor: str = "temperature", session_id: Optional[str] = None):
     """
     Returns granular diagnostic record for a single probe including
     'Why this status?', active investigation root cause, drift metrics, and event timeline.
     """
-    return sensor_health_service.get_single_sensor_detail(station_id=station_id, sensor=sensor)
+    sid = resolve_session_id(request, session_id)
+    return sensor_health_service.get_single_sensor_detail(station_id=station_id, sensor=sensor, session_id=sid)
 
 
 @app.get("/api/maintenance/tickets")
 def api_get_maintenance_tickets(
+    request: Request,
     status: Optional[str] = None,
     station_id: Optional[str] = None,
     sensor: Optional[str] = None,
-    priority: Optional[str] = None
+    priority: Optional[str] = None,
+    session_id: Optional[str] = None
 ):
     """
     Returns persistent list of maintenance work orders filtered by status/station/sensor/priority,
     plus live maintenance KPIs (open, high priority, in progress, awaiting verification, resolved, overdue).
     """
-    tickets = maintenance_service.list_tickets(status=status, station_id=station_id, sensor=sensor, priority=priority)
-    kpis = maintenance_service.get_kpis()
+    sid = resolve_session_id(request, session_id)
+    tickets = maintenance_service.list_tickets(status=status, station_id=station_id, sensor=sensor, priority=priority, session_id=sid)
+    kpis = maintenance_service.get_kpis(session_id=sid)
     return {
+        "session_id": sid,
         "kpis": kpis,
         "tickets": tickets
     }
 
 
 @app.post("/api/maintenance/tickets")
-def api_create_maintenance_ticket(req: TicketCreateRequest):
+def api_create_maintenance_ticket(req: TicketCreateRequest, request: Request):
     """
     Creates a new maintenance ticket with automatic priority/evidence mapping.
     """
-    ticket = maintenance_service.create_ticket(req.dict())
+    sid = resolve_session_id(request, req.session_id)
+    ticket = maintenance_service.create_ticket(req.dict(), session_id=sid)
     return ticket
 
 
 @app.patch("/api/maintenance/tickets/{ticket_id}")
-def api_update_maintenance_ticket(ticket_id: str, req: TicketUpdateRequest):
+def api_update_maintenance_ticket(ticket_id: str, req: TicketUpdateRequest, request: Request):
     """
     Updates maintenance ticket status, assignee, notes, or resolution.
     Moving status to RESOLVED flags ticket into AWAITING VERIFICATION per the Verification Rule.
     """
-    updated = maintenance_service.update_ticket(ticket_id, req.dict(exclude_unset=True))
+    sid = resolve_session_id(request, req.session_id)
+    updated = maintenance_service.update_ticket(ticket_id, req.dict(exclude_unset=True), session_id=sid)
     if not updated:
         raise HTTPException(status_code=404, detail=f"Ticket {ticket_id} not found")
     return updated
 
 
 @app.post("/api/maintenance/tickets/{ticket_id}/verify")
-def api_verify_maintenance_ticket(ticket_id: str):
+def api_verify_maintenance_ticket(ticket_id: str, request: Request, session_id: Optional[str] = None):
     """
     Step 7 & 10 Verification Endpoint:
     Re-evaluates live sensor health and telemetry for the ticket's station and sensor.
     - If nominal, closes ticket and restores sensor to HEALTHY.
     - If fault is still active, verification fails and sensor remains in non-healthy status.
     """
-    ticket = maintenance_service.get_ticket(ticket_id)
+    sid = resolve_session_id(request, session_id)
+    ticket = maintenance_service.get_ticket(ticket_id, session_id=sid)
     if not ticket:
         raise HTTPException(status_code=404, detail=f"Ticket {ticket_id} not found")
 
     station_id = ticket["station_id"]
     sensor = ticket["sensor"]
 
-    sensor_detail = sensor_health_service.get_single_sensor_detail(station_id, sensor)
+    sensor_detail = sensor_health_service.get_single_sensor_detail(station_id, sensor, session_id=sid)
     current_sensor_status = sensor_detail["status"]
-    active_invs = investigation_service.get_active_investigations()
+    active_invs = investigation_service.get_active_investigations(session_id=sid)
 
     res = maintenance_service.verify_ticket(
         ticket_id=ticket_id,
         active_investigations=active_invs,
-        current_sensor_status=current_sensor_status
+        current_sensor_status=current_sensor_status,
+        session_id=sid
     )
     return res
 
@@ -1226,28 +1266,32 @@ class SimulationStartRequest(BaseModel):
     duration: int = 12
     noise_level: str = "MEDIUM"
     auto_warmup: bool = True
+    session_id: Optional[str] = None
 
 
 class SimulationWarmupRequest(BaseModel):
     station_id: str = "AWS-003"
     source: str = "Meteostat"
+    session_id: Optional[str] = None
 
 
 @app.post("/api/simulation/warmup")
-def api_warmup_simulation_buffer(req: SimulationWarmupRequest):
+def api_warmup_simulation_buffer(req: SimulationWarmupRequest, request: Request):
     """
     Pre-seeds live LSTM buffer with last 24 real consecutive hourly readings
     from the historical dataset without modifying CSV files.
     """
-    return simulation_service.warmup_station_buffer(req.station_id, req.source)
+    sid = resolve_session_id(request, req.session_id)
+    return simulation_service.warmup_station_buffer(req.station_id, req.source, session_id=sid)
 
 
 @app.post("/api/simulation/start")
-def api_start_simulation(req: SimulationStartRequest):
+def api_start_simulation(req: SimulationStartRequest, request: Request):
     """
     Executes full pipeline testbench:
     Simulation -> Telemetry -> ML Inference -> Alert -> Triage -> Spatial -> Sensor Health -> Ticket.
     """
+    sid = resolve_session_id(request, req.session_id)
     return simulation_service.start_simulation(
         station_id=req.station_id,
         sensor=req.sensor,
@@ -1255,7 +1299,8 @@ def api_start_simulation(req: SimulationStartRequest):
         magnitude=req.magnitude,
         duration=req.duration,
         noise_level=req.noise_level,
-        auto_warmup=req.auto_warmup
+        auto_warmup=req.auto_warmup,
+        session_id=sid
     )
 
 

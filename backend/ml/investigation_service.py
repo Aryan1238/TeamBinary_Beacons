@@ -16,6 +16,8 @@ attribution, severity classification, and actionable operational remedies.
 
 import math
 import uuid
+import time
+import threading
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -67,12 +69,65 @@ STATION_METADATA: Dict[str, Dict[str, Any]] = {
 
 class InvestigationService:
     def __init__(self):
-        # Sliding buffer of recent temperature readings per station_id for ROC and Zero-Variance: list of (dt, temp)
-        self.station_readings_history: Dict[str, List[Tuple[datetime, float]]] = {}
-        # Active investigation records keyed by station_id
-        self.active_investigations: Dict[str, Dict[str, Any]] = {}
-        # Station current readings cache for spatial consensus
-        self.latest_station_readings: Dict[str, Dict[str, Any]] = {}
+        self._lock = threading.Lock()
+        # Session-keyed mappings: session_id -> { station_id: record }
+        self.session_active_investigations: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        # Session-keyed mappings: session_id -> { station_id: reading_dict }
+        self.session_latest_readings: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        # Session-keyed mappings: session_id -> { station_id: [(dt, temp)] }
+        self.session_readings_history: Dict[str, Dict[str, List[Tuple[datetime, float]]]] = {}
+        self.session_last_activity: Dict[str, float] = {}
+
+    def _cleanup_expired_sessions(self, now: float):
+        # 30-minute idle TTL cleanup
+        expired = [s for s, last_t in self.session_last_activity.items() if now - last_t > 1800 and s != "default"]
+        for s in expired:
+            self.session_active_investigations.pop(s, None)
+            self.session_latest_readings.pop(s, None)
+            self.session_readings_history.pop(s, None)
+            self.session_last_activity.pop(s, None)
+
+        # Cap sessions at 50 to prevent unbounded memory growth on Render
+        if len(self.session_last_activity) > 50:
+            oldest = sorted(
+                [s for s in self.session_last_activity if s != "default"],
+                key=lambda s: self.session_last_activity[s]
+            )
+            for s in oldest[: len(self.session_last_activity) - 50]:
+                self.session_active_investigations.pop(s, None)
+                self.session_latest_readings.pop(s, None)
+                self.session_readings_history.pop(s, None)
+                self.session_last_activity.pop(s, None)
+
+    def _get_session_data(
+        self, session_id: Optional[str] = "default"
+    ) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]], Dict[str, List[Tuple[datetime, float]]]]:
+        sid = (session_id or "default").strip()
+        now = time.time()
+        with self._lock:
+            self._cleanup_expired_sessions(now)
+            if sid not in self.session_active_investigations:
+                self.session_active_investigations[sid] = {}
+                self.session_latest_readings[sid] = {}
+                self.session_readings_history[sid] = {}
+            self.session_last_activity[sid] = now
+            return (
+                self.session_active_investigations[sid],
+                self.session_latest_readings[sid],
+                self.session_readings_history[sid],
+            )
+
+    @property
+    def active_investigations(self) -> Dict[str, Dict[str, Any]]:
+        return self._get_session_data("default")[0]
+
+    @property
+    def latest_station_readings(self) -> Dict[str, Dict[str, Any]]:
+        return self._get_session_data("default")[1]
+
+    @property
+    def station_readings_history(self) -> Dict[str, List[Tuple[datetime, float]]]:
+        return self._get_session_data("default")[2]
 
     def get_metadata(self, station_id: str) -> Dict[str, Any]:
         sid = str(station_id)
@@ -93,12 +148,16 @@ class InvestigationService:
         self,
         packet: Dict[str, Any],
         ml_result: Optional[Dict[str, Any]] = None,
-        comm_failure_hours: float = 0.0
+        comm_failure_hours: float = 0.0,
+        session_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Evaluates a live telemetry packet against the 4 diagnostic layers.
         Builds and returns an InvestigationRecord if triggered, or None if pristine.
         """
+        sid = (session_id or packet.get("session_id") or "default").strip()
+        active_invs, latest_readings, readings_hist = self._get_session_data(sid)
+
         station_id = str(packet.get("station_id", "UNKNOWN"))
         source = str(packet.get("source", "Meteostat")).strip().upper()
         meta = self.get_metadata(station_id)
@@ -136,16 +195,16 @@ class InvestigationService:
         if not affected_var or affected_var == "None":
             affected_var = "temperature"
 
-        # Update sliding history for this station
-        if station_id not in self.station_readings_history:
-            self.station_readings_history[station_id] = []
-        hist = self.station_readings_history[station_id]
+        # Update sliding history for this station in this session
+        if station_id not in readings_hist:
+            readings_hist[station_id] = []
+        hist = readings_hist[station_id]
         hist.append((dt, temp))
         if len(hist) > 24:
             hist.pop(0)
 
-        # Cache latest station observation for spatial consensus
-        self.latest_station_readings[station_id] = {
+        # Cache latest station observation for spatial consensus in this session
+        latest_readings[station_id] = {
             "station_id": station_id,
             "name": station_name,
             "lat": meta["lat"],
@@ -231,7 +290,7 @@ class InvestigationService:
         # -------------------------------------------------------------
         # LAYER 4: Regional Spatial Consensus (Neighbors <= 250km)
         # -------------------------------------------------------------
-        spatial_check = self._check_spatial_consensus(station_id, meta["lat"], meta["lon"], temp)
+        spatial_check = self._check_spatial_consensus(station_id, meta["lat"], meta["lon"], temp, station_readings_cache=latest_readings)
 
         # -------------------------------------------------------------
         # STEP 1: TRIGGER LOGIC EVALUATION
@@ -283,8 +342,8 @@ class InvestigationService:
 
         # If zero triggers fired, clear active investigation and return None
         if not triggers:
-            if station_id in self.active_investigations:
-                del self.active_investigations[station_id]
+            if station_id in active_invs:
+                del active_invs[station_id]
             return None
 
         # -------------------------------------------------------------
@@ -343,8 +402,8 @@ class InvestigationService:
             "trigger_source": triggers,
         }
 
-        # Store in active registry
-        self.active_investigations[station_id] = record
+        # Store in active registry for this session
+        active_invs[station_id] = record
         return record
 
     def _check_external_weather(self, lat: float, lon: float, temp: float) -> Dict[str, Any]:
@@ -411,7 +470,14 @@ class InvestigationService:
                 "distance_km": None
             }
 
-    def _check_spatial_consensus(self, station_id: str, lat: float, lon: float, temp: float) -> Dict[str, Any]:
+    def _check_spatial_consensus(
+        self,
+        station_id: str,
+        lat: float,
+        lon: float,
+        temp: float,
+        station_readings_cache: Optional[Dict[str, Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
         """
         Compares reading with nearest operational stations using Inverse Distance Weighting (IDW)
         strictly within <= 150.0 km radius.
@@ -432,8 +498,9 @@ class InvestigationService:
         
         neighbors = []
         
-        # 1. Search active operational telemetry cache
-        for sid, st_info in self.latest_station_readings.items():
+        # 1. Search active operational telemetry cache for this session
+        readings_cache = station_readings_cache if station_readings_cache is not None else self.latest_station_readings
+        for sid, st_info in readings_cache.items():
             if sid == station_id:
                 continue
             d = haversine_km(lat, lon, st_info["lat"], st_info["lon"])
@@ -683,24 +750,28 @@ class InvestigationService:
             "Verify with External Weather"
         )
 
-    def get_active_investigations(self) -> List[Dict[str, Any]]:
-        return list(self.active_investigations.values())
+    def get_active_investigations(self, session_id: Optional[str] = "default") -> List[Dict[str, Any]]:
+        active_invs, _, _ = self._get_session_data(session_id)
+        return list(active_invs.values())
 
-    def get_station_investigation(self, station_id: str) -> Optional[Dict[str, Any]]:
-        return self.active_investigations.get(str(station_id))
+    def get_station_investigation(self, station_id: str, session_id: Optional[str] = "default") -> Optional[Dict[str, Any]]:
+        active_invs, _, _ = self._get_session_data(session_id)
+        return active_invs.get(str(station_id))
 
-    def clear_investigation(self, station_id: str) -> bool:
+    def clear_investigation(self, station_id: str, session_id: Optional[str] = "default") -> bool:
+        active_invs, _, readings_hist = self._get_session_data(session_id)
         sid = str(station_id)
-        if sid in self.active_investigations:
-            del self.active_investigations[sid]
-        if sid in self.station_readings_history:
-            del self.station_readings_history[sid]
+        if sid in active_invs:
+            del active_invs[sid]
+        if sid in readings_hist:
+            del readings_hist[sid]
         return True
 
-    def clear_all(self):
-        self.active_investigations.clear()
-        self.station_readings_history.clear()
-        self.latest_station_readings.clear()
+    def clear_all(self, session_id: Optional[str] = "default"):
+        active_invs, latest_readings, readings_hist = self._get_session_data(session_id)
+        active_invs.clear()
+        readings_hist.clear()
+        latest_readings.clear()
 
 
 # Singleton investigation engine instance
