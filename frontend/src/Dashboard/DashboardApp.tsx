@@ -40,7 +40,8 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
   });
   const [selectedStationId, setSelectedStationId] = useState<string>('AWS-001');
   const [openTicketsCount, setOpenTicketsCount] = useState<number>(0);
-  const { stations, investigationsList } = useTelemetry();
+  const { stations, investigationsList, simulationStatus, activeFaults, demoProgress } = useTelemetry();
+  const isSimulationActive = simulationStatus === 'RUNNING' && (Object.keys(activeFaults).length > 0 || demoProgress.active);
 
   // Audio alert on genuine new HIGH or CRITICAL investigation records
   const seenRecordIdsRef = useRef<Set<string>>(new Set());
@@ -62,7 +63,10 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
 
   const fetchTicketsCount = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/maintenance/tickets`, {
+      const url = isSimulationActive
+        ? `${API_BASE}/maintenance/tickets?include_simulation=true`
+        : `${API_BASE}/maintenance/tickets`;
+      const res = await fetch(url, {
         headers: getSessionHeaders(),
       });
       if (res.ok) {
@@ -72,12 +76,17 @@ const DashboardContent: React.FC<DashboardAppProps> = ({
     } catch {
       // fallback
     }
-  }, []);
+  }, [isSimulationActive]);
 
   useEffect(() => {
     fetchTicketsCount();
     const interval = setInterval(fetchTicketsCount, 4000);
-    return () => clearInterval(interval);
+    const handleUpdate = () => fetchTicketsCount();
+    window.addEventListener('skyguard:tickets_updated', handleUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('skyguard:tickets_updated', handleUpdate);
+    };
   }, [fetchTicketsCount]);
 
   // Derive dynamic real anomaly alerts from active investigation records

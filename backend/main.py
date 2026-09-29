@@ -673,6 +673,7 @@ def reset_simulation(request: Request, session_id: Optional[str] = None):
     sim.reset()
     investigation_service.clear_all(session_id=sid)
     lstm_service.reset_session_buffers(sid, "Simulation Reset")
+    maintenance_service.clear_simulation_tickets(session_id=sid)
     live_weather_service.fetch_live_weather(force=True)
     return {
         "success": True,
@@ -1146,6 +1147,8 @@ class TicketCreateRequest(BaseModel):
     evidence: Optional[Dict[str, Any]] = None
     recommended_action: Optional[str] = None
     notes: Optional[List[Dict[str, Any]]] = None
+    is_simulation: Optional[bool] = False
+    source: Optional[str] = None
     session_id: Optional[str] = None
 
 
@@ -1186,15 +1189,23 @@ def api_get_maintenance_tickets(
     station_id: Optional[str] = None,
     sensor: Optional[str] = None,
     priority: Optional[str] = None,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    include_simulation: bool = False
 ):
     """
     Returns persistent list of maintenance work orders filtered by status/station/sensor/priority,
     plus live maintenance KPIs (open, high priority, in progress, awaiting verification, resolved, overdue).
     """
     sid = resolve_session_id(request, session_id)
-    tickets = maintenance_service.list_tickets(status=status, station_id=station_id, sensor=sensor, priority=priority, session_id=sid)
-    kpis = maintenance_service.get_kpis(session_id=sid)
+    tickets = maintenance_service.list_tickets(
+        status=status,
+        station_id=station_id,
+        sensor=sensor,
+        priority=priority,
+        session_id=sid,
+        include_simulation=include_simulation
+    )
+    kpis = maintenance_service.get_kpis(include_simulation=include_simulation, session_id=sid)
     return {
         "session_id": sid,
         "kpis": kpis,

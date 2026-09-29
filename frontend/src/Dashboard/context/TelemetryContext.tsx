@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { MOCK_STATIONS, MOCK_24H_HISTORY, HistoryPoint } from '../data/mockStations';
 import type { AWSStation, SensorType, StationStatus, MLInferenceResult, InvestigationRecord } from '../types/dashboard.types';
-import { API_BASE, getSessionHeaders } from '../../services/api';
+import { API_BASE, getSessionHeaders, getOrCreateSessionId } from '../../services/api';
 
 export type SimulationStatus = 'STOPPED' | 'RUNNING' | 'PAUSED';
 
@@ -725,6 +725,35 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                         ...prev,
                         [station.id]: evalData.investigation,
                       }));
+
+                      // In simulation mode: auto-create maintenance ticket if fault is active and meets ticket condition
+                      const inv = evalData.investigation;
+                      if (
+                        fault &&
+                        (inv.severity === 'CRITICAL' || inv.severity === 'HIGH') &&
+                        inv.recommended_action !== 'Possible Genuine Weather Event'
+                      ) {
+                        fetch(`${API_BASE}/maintenance/tickets`, {
+                          method: 'POST',
+                          headers: getSessionHeaders(),
+                          body: JSON.stringify({
+                            station_id: station.id,
+                            sensor: inv.affected_variable || inv.parameter || fault.sensor || 'temperature',
+                            issue: `[SIMULATION] ${inv.probable_cause || 'Sensor anomaly detected'}`,
+                            priority: inv.severity,
+                            is_simulation: true,
+                            source: 'simulation',
+                            recommended_action: inv.recommended_action || 'Inspect and calibrate sensor probe',
+                            session_id: getOrCreateSessionId(),
+                          }),
+                        })
+                          .then(() => {
+                            if (typeof window !== 'undefined') {
+                              window.dispatchEvent(new CustomEvent('skyguard:tickets_updated'));
+                            }
+                          })
+                          .catch(() => {});
+                      }
                     } else {
                       setActiveInvestigations((prev) => {
                         if (prev[station.id]) {
@@ -790,9 +819,18 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setMlResults(getBaselineMLResults());
     setTelemetryAlerts({});
     setActiveInvestigations({});
-    fetch(`${API_BASE}/simulation/reset`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
+    fetch(`${API_BASE}/simulation/reset`, { method: 'POST', headers: getSessionHeaders() })
+      .then(() => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('skyguard:tickets_updated'));
+        }
+      })
+      .catch(() => {});
     fetch(`${API_BASE}/ml/reset`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
     fetch(`${API_BASE}/investigation/clear`, { method: 'POST', headers: getSessionHeaders() }).catch(() => {});
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('skyguard:tickets_updated'));
+    }
   }, []);
 
   /**
@@ -909,6 +947,35 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               ...prev,
               [stationId]: data.investigation,
             }));
+
+            // In simulation mode: auto-create maintenance ticket if meeting ticket condition
+            const inv = data.investigation;
+            if (
+              inv &&
+              (inv.severity === 'CRITICAL' || inv.severity === 'HIGH') &&
+              inv.recommended_action !== 'Possible Genuine Weather Event'
+            ) {
+              fetch(`${API_BASE}/maintenance/tickets`, {
+                method: 'POST',
+                headers: getSessionHeaders(),
+                body: JSON.stringify({
+                  station_id: stationId,
+                  sensor: inv.affected_variable || inv.parameter || targetSensor || 'temperature',
+                  issue: `[SIMULATION] ${inv.probable_cause || 'Sensor anomaly detected'}`,
+                  priority: inv.severity,
+                  is_simulation: true,
+                  source: 'simulation',
+                  recommended_action: inv.recommended_action || 'Inspect and calibrate sensor probe',
+                  session_id: getOrCreateSessionId(),
+                }),
+              })
+                .then(() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('skyguard:tickets_updated'));
+                  }
+                })
+                .catch(() => {});
+            }
           }
         })
         .catch(() => {});

@@ -63,14 +63,17 @@ class MaintenanceService:
             return []
         try:
             with open(TICKETS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                return [t for t in data if not t.get("is_simulation", False)]
         except Exception:
             return []
 
     def _save_tickets(self, tickets: List[Dict[str, Any]]):
+        # Simulation tickets are strictly ephemeral session-only and must NEVER be written to persistent store
+        persistent_tickets = [t for t in tickets if not t.get("is_simulation", False)]
         temp_path = TICKETS_FILE + ".tmp"
         with open(temp_path, "w", encoding="utf-8") as f:
-            json.dump(tickets, f, indent=2, ensure_ascii=False)
+            json.dump(persistent_tickets, f, indent=2, ensure_ascii=False)
         os.replace(temp_path, TICKETS_FILE)
 
     def list_tickets(
@@ -79,9 +82,11 @@ class MaintenanceService:
         station_id: Optional[str] = None,
         sensor: Optional[str] = None,
         priority: Optional[str] = None,
-        session_id: Optional[str] = "default"
+        session_id: Optional[str] = "default",
+        include_simulation: bool = False
     ) -> List[Dict[str, Any]]:
-        tickets = self._get_session_tickets(session_id)
+        all_tickets = self._get_session_tickets(session_id)
+        tickets = [t for t in all_tickets if include_simulation or not t.get("is_simulation", False)]
         filtered = tickets
         if status and status.upper() != "ALL":
             filtered = [t for t in filtered if t.get("status", "").upper() == status.upper()]
@@ -128,6 +133,20 @@ class MaintenanceService:
         else:
             priority = "HIGH"
 
+        is_sim = bool(payload.get("is_simulation", False) or payload.get("source") == "simulation")
+
+        # Idempotency check for simulation tickets:
+        # Avoid duplicate tickets for the same station and sensor in this session if already open/assigned
+        if is_sim:
+            for t in tickets:
+                if (
+                    t.get("is_simulation")
+                    and t.get("station_id") == station_id
+                    and t.get("sensor", "").lower() == sensor.lower()
+                    and t.get("status") in ("OPEN", "ASSIGNED")
+                ):
+                    return t
+
         seq_num = len(tickets) + 1
         date_str = datetime.now().strftime("%Y%m%d")
         ticket_id = f"MNT-{date_str}-{seq_num:03d}"
@@ -135,8 +154,6 @@ class MaintenanceService:
         initial_status = "ASSIGNED" if payload.get("assigned_to") else "OPEN"
         if payload.get("status"):
             initial_status = payload.get("status").upper()
-
-        is_sim = bool(payload.get("is_simulation", False) or payload.get("source") == "simulation")
 
         ticket = {
             "id": ticket_id,
@@ -176,7 +193,7 @@ class MaintenanceService:
         }
 
         tickets.append(ticket)
-        if sid == "default":
+        if sid == "default" and not is_sim:
             self._save_tickets(tickets)
         return ticket
 
@@ -366,5 +383,14 @@ class MaintenanceService:
         tickets.clear()
         if sid == "default":
             self._save_tickets([])
+
+    def clear_simulation_tickets(self, session_id: Optional[str] = "default"):
+        """Removes all simulation tickets for the specified session, leaving manual/prod tickets intact."""
+        sid = (session_id or "default").strip()
+        with self._lock:
+            if sid in self.session_tickets:
+                self.session_tickets[sid] = [t for t in self.session_tickets[sid] if not t.get("is_simulation", False)]
+        if sid == "default":
+            self._save_tickets(self.session_tickets.get(sid, []))
 
 maintenance_service = MaintenanceService()
