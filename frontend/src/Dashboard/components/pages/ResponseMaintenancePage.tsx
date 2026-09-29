@@ -25,6 +25,7 @@ import type {
   SensorType
 } from '../../types/dashboard.types';
 import { API_BASE, getSessionHeaders } from '../../../services/api';
+import { useTelemetry } from '../../context/TelemetryContext';
 
 interface ResponseMaintenancePageProps {
   onNavigateTab?: (tab: DashboardTab) => void;
@@ -41,6 +42,9 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [search, setSearch] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+
+  const { simulationStatus, activeFaults, demoProgress } = useTelemetry();
+  const isSimulationActive = simulationStatus === 'RUNNING' && (Object.keys(activeFaults).length > 0 || demoProgress.active);
 
   // Verification alert modal / message
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
@@ -68,7 +72,10 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
 
   const fetchTickets = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/maintenance/tickets`, {
+      const url = isSimulationActive
+        ? `${API_BASE}/maintenance/tickets?include_simulation=true`
+        : `${API_BASE}/maintenance/tickets`;
+      const res = await fetch(url, {
         headers: getSessionHeaders(),
       });
       if (res.ok) {
@@ -81,12 +88,17 @@ export const ResponseMaintenancePage: React.FC<ResponseMaintenancePageProps> = (
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSimulationActive]);
 
   useEffect(() => {
     fetchTickets();
     const interval = setInterval(fetchTickets, 4000);
-    return () => clearInterval(interval);
+    const handleUpdate = () => fetchTickets();
+    window.addEventListener('skyguard:tickets_updated', handleUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('skyguard:tickets_updated', handleUpdate);
+    };
   }, [fetchTickets]);
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
